@@ -39,5 +39,11 @@
     "web": "expo start --web",
     "test": "tsx --test src/logic.test.ts"
   },
+  "overrides": {
+    "expo-share-intent": {
+      "expo-constants": "$expo-constants",
+      "expo-linking": "$expo-linking"
+    }
+  },
   "private": true
 }
