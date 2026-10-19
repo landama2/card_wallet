@@ -9,8 +9,13 @@ export default function Detail({ id }: { id: number }) {
   useEffect(() => {
     let lock: WakeLockSentinel | undefined;
     let gone = false;
-    navigator.wakeLock?.request('screen').then((l) => { if (gone) l.release(); else lock = l; }).catch(() => {});
-    return () => { gone = true; lock?.release(); };
+    const acquire = () => {
+      if (document.visibilityState !== 'visible') return;
+      navigator.wakeLock?.request('screen').then((l) => { if (gone) l.release(); else lock = l; }).catch(() => {});
+    };
+    acquire();
+    document.addEventListener('visibilitychange', acquire);
+    return () => { gone = true; document.removeEventListener('visibilitychange', acquire); lock?.release(); };
   }, []);
   if (!item) return <main><p>Not found</p><button onClick={() => go('/cards')}>Back</button></main>;
   const back = () => go(item.kind === 'card' ? '/cards' : '/tickets');
