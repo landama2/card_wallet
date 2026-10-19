@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Alert, Button, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { CameraView, useCameraPermissions } from 'expo-camera';
@@ -57,12 +57,15 @@ export default function Add() {
       },
     });
 
+  const saving = useRef(false);
   const doSave = async () => {
+    if (saving.current) return;
+    saving.current = true;
     const id = insertItem({
       kind, name: name.trim(), code: code.trim(), format, color: null, note: null,
       expires_at: kind === 'ticket' ? expires!.getTime() : null, notify_id: null, created_at: Date.now(),
     });
-    await schedule(getItem(id)!);
+    try { await schedule(getItem(id)!); } catch (e) { Alert.alert('Saved, but reminder failed', String(e)); }
     router.back();
   };
 
