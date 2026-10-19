@@ -24,7 +24,7 @@ export default function Detail({ id }: { id: number }) {
   return (
     <div className="detail">
       <header><button onClick={back}>‹ Back</button><h1>{item.name}</h1></header>
-      {isArchived(item) ? <p className="expired">Expired</p> : isUpcoming(item) && <p className="expired">Not valid yet</p>}
+      {isArchived(item) ? <p className="expired">Expired</p> : isUpcoming(item) && <p className="upcoming">Not valid yet</p>}
       {label && <p className="validity">{label}</p>}
       <CodeView code={item.code} format={item.format} />
       <p className="codetext">{item.code}</p>

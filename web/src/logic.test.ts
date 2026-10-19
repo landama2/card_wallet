@@ -9,6 +9,7 @@ test('coupon dates cover whole local days', () => {
   assert.equal(dayEnd('2026-10-31'), new Date(2026, 10, 1).getTime() - 1);
   assert.equal(toDateInput(dayStart('2026-01-05')), '2026-01-05');
   assert.equal(toDateInput(dayEnd('2026-12-31')), '2026-12-31');
+  for (const s of ['2026-03-29', '2026-10-25', '2028-02-29']) assert.equal(toDateInput(dayEnd(s)), s); // DST days, leap day
 });
 
 test('coupon is upcoming before valid_from, valid through the last day, then archived', () => {
@@ -19,6 +20,9 @@ test('coupon is upcoming before valid_from, valid through the last day, then arc
   assert.equal(isArchived(c, at(2026, 10, 31, 23)), false);
   assert.equal(isArchived(c, at(2026, 11, 1, 0)), true);
   assert.equal(isUpcoming({ ...c, valid_from: null }, at(2026, 1, 1)), false);
+  const { valid_from, ...saved_before_coupons } = c; // old storage has no valid_from key at all
+  assert.equal(isUpcoming(saved_before_coupons as Item, at(2026, 1, 1)), false);
+  assert.equal(isArchived({ ...c, expires_at: null }, at(2030, 1, 1)), false);
 });
 
 test('archive is derived from expiry; cards never archive', () => {

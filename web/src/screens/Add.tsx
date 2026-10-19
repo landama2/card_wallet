@@ -2,10 +2,12 @@ import { useEffect, useRef, useState } from 'react';
 import Scanner from '../Scanner';
 import { detectBlob } from '../detect';
 import { insertItem } from '../db';
-import { FORMATS, type Format, type Kind, dayEnd, dayStart, validateCode } from '../logic';
+import { FORMATS, KINDS, type Format, type Kind, dayEnd, dayStart, validateCode } from '../logic';
 import { go } from '../route';
 
-export default function Add({ kind, shared }: { kind: Kind; shared: boolean }) {
+export default function Add({ kind: initialKind, shared }: { kind: Kind; shared: boolean }) {
+  // A shared image arrives without context, so let the user say what it is.
+  const [kind, setKind] = useState(initialKind);
   const [name, setName] = useState('');
   const [code, setCode] = useState('');
   const [format, setFormat] = useState<Format>('qr');
@@ -68,6 +70,11 @@ export default function Add({ kind, shared }: { kind: Kind; shared: boolean }) {
     <div>
       <header><button onClick={back}>‹ Back</button><h1>Add {kind}</h1></header>
       <main className="form">
+        {shared && (
+          <div className="chips">
+            {KINDS.map((k) => <button key={k} className={k === kind ? 'on' : ''} onClick={() => setKind(k)}>{k}</button>)}
+          </div>
+        )}
         <input placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} />
         <input placeholder="Code / number" value={code} onChange={(e) => setCode(e.target.value)} />
         <div className="chips">

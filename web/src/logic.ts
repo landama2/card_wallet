@@ -31,7 +31,7 @@ export const isUpcoming = (i: Item, now = Date.now()) => i.valid_from != null &&
 // '2026-10-20' (an <input type="date"> value) <-> local day boundaries.
 const ymd = (s: string) => s.split('-').map(Number) as [number, number, number];
 export const dayStart = (s: string) => { const [y, m, d] = ymd(s); return new Date(y, m - 1, d).getTime(); };
-export const dayEnd = (s: string) => { const [y, m, d] = ymd(s); return new Date(y, m - 1, d + 1).getTime() - 1; };
+export const dayEnd = (s: string) => { const [y, m, d] = ymd(s); return new Date(y, m - 1, d, 23, 59, 59, 999).getTime(); };
 // Row/detail subtitle: ticket = date + time, coupon = date range (time of day is irrelevant).
 export function validityLabel(i: Item): string | null {
   if (i.expires_at == null) return null;
@@ -81,8 +81,9 @@ export function parseImport(json: string): NewItem[] {
     if (!ok) throw new Error('Bad item in backup');
     return {
       kind: x.kind, name: x.name, code: x.code, format: x.format,
-      color: x.color ?? null, note: x.note ?? null, expires_at: x.expires_at ?? null,
-      valid_from: x.valid_from ?? null, notify_id: null, created_at: x.created_at ?? Date.now(),
+      color: x.color ?? null, note: x.note ?? null,
+      expires_at: typeof x.expires_at === 'number' ? x.expires_at : null,
+      valid_from: typeof x.valid_from === 'number' ? x.valid_from : null, notify_id: null, created_at: x.created_at ?? Date.now(),
     };
   });
 }
