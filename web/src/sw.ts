@@ -29,6 +29,9 @@ const RUNTIME: { prefix: string; cache: string; keep: (res: Response) => boolean
   { prefix: 'https://www.google.com/s2/favicons', cache: 'logos', keep: (res) => res.ok || res.type === 'opaque' },
   // Self-hosted OCR engine and language data (see vite.config.ts).
   { prefix: new URL('ocr/', self.registration.scope).href, cache: 'ocr', keep: (res) => res.ok },
+  // Web fonts: the CSS and font files from Google Fonts (font file URLs are content-addressed).
+  { prefix: 'https://fonts.googleapis.com/', cache: 'fonts', keep: (res) => res.ok },
+  { prefix: 'https://fonts.gstatic.com/', cache: 'fonts', keep: (res) => res.ok },
   // Barcode fallback (zxing-wasm via barcode-detector), versioned URLs on jsDelivr.
   { prefix: 'https://fastly.jsdelivr.net/npm/', cache: 'runtime', keep: (res) => res.ok },
 ];

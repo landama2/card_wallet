@@ -29,7 +29,9 @@ export default function Scanner({ onResult, onCancel }: Props) {
   return (
     <div className="scanner">
       <video ref={video} playsInline muted />
-      <button onClick={onCancel}>Cancel</button>
+      <div className="frame" aria-hidden="true" />
+      <p className="hint-text">Point the camera at the barcode or QR code</p>
+      <button className="cancel" onClick={onCancel}>Cancel</button>
     </div>
   );
 }

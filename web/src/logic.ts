@@ -44,6 +44,33 @@ export const isUpcoming = (i: Item, now = Date.now()) => i.valid_from != null &&
 const ymd = (s: string) => s.split('-').map(Number) as [number, number, number];
 export const dayStart = (s: string) => { const [y, m, d] = ymd(s); return new Date(y, m - 1, d).getTime(); };
 export const dayEnd = (s: string) => { const [y, m, d] = ymd(s); return new Date(y, m - 1, d, 23, 59, 59, 999).getTime(); };
+export const FORMAT_LABEL: Record<Format, string> = {
+  qr: 'QR', ean13: 'EAN-13', ean8: 'EAN-8', upc_a: 'UPC-A', code128: 'Code 128',
+  code39: 'Code 39', pdf417: 'PDF417', aztec: 'Aztec', datamatrix: 'Data Matrix',
+};
+
+// Stable hue per store name: the colour of its tile, detail screen and fallback logo.
+export const storeHue = (name: string) => [...name.trim().toLowerCase()].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7);
+
+const shortDate = (t: number) => new Date(t).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+const shortDateTime = (t: number) => new Date(t).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+
+// The chip on list rows: how soon a ticket/coupon ends, or when it starts. Cards have none.
+export function statusChip(i: Item, now = Date.now(), date = shortDate, dateTime = shortDateTime):
+  { text: string; tone: 'soon' | 'ok' | 'upcoming' | 'expired' } | null {
+  if (i.kind === 'card' || i.expires_at == null) return null;
+  const when = i.kind === 'ticket' ? dateTime : date;
+  if (isUpcoming(i, now)) return { text: `From ${date(i.valid_from!)}`, tone: 'upcoming' };
+  if (isArchived(i, now)) return { text: `Expired ${date(i.expires_at)}`, tone: 'expired' };
+  const midnight = (t: number) => { const d = new Date(t); return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime(); };
+  const days = Math.round((midnight(i.expires_at) - midnight(now)) / 86_400_000);
+  const suffix = i.kind === 'ticket' ? `, ${when(i.expires_at)}` : '';
+  if (days === 0) return { text: `Ends today${suffix}`, tone: 'soon' };
+  if (days === 1) return { text: `Ends tomorrow${suffix}`, tone: 'soon' };
+  if (days <= 3) return { text: `Ends in ${days} days${suffix}`, tone: 'soon' };
+  return { text: `Until ${when(i.expires_at)}`, tone: 'ok' };
+}
+
 // Row/detail subtitle: ticket = date + time, coupon = date range (time of day is irrelevant).
 export function validityLabel(i: Item): string | null {
   if (i.expires_at == null) return null;

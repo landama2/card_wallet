@@ -1,13 +1,18 @@
 import { useEffect, useState } from 'react';
 import CodeView from '../CodeView';
-import Logo from '../Logo';
+import Icon from '../Icon';
+import Logo, { tileColor } from '../Logo';
 import { deleteItem, getItem, updateItem } from '../db';
-import { isArchived, isUpcoming, toDomain, validityLabel } from '../logic';
+import { FORMAT_LABEL, statusChip, toDomain, validityLabel } from '../logic';
 import { go } from '../route';
+
+const KIND_LABEL = { card: 'Loyalty card', ticket: 'Ticket', coupon: 'Coupon' } as const;
 
 export default function Detail({ id }: { id: number }) {
   const [rev, setRev] = useState(0); // bumped after an edit so the item is re-read from storage
   const item = getItem(id);
+  const color = item ? tileColor(item.name) : null;
+
   useEffect(() => {
     let lock: WakeLockSentinel | undefined;
     let gone = false;
@@ -19,10 +24,27 @@ export default function Detail({ id }: { id: number }) {
     document.addEventListener('visibilitychange', acquire);
     return () => { gone = true; document.removeEventListener('visibilitychange', acquire); lock?.release(); };
   }, []);
-  if (!item) return <main><p>Not found</p><button onClick={() => go('/cards')}>Back</button></main>;
+
+  // The phone's status bar takes the store colour too, while this screen is open.
+  useEffect(() => {
+    const meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
+    if (!meta || !color) return;
+    const before = meta.content;
+    meta.content = color;
+    return () => { meta.content = before; };
+  }, [color]);
+
+  if (!item) {
+    return (
+      <div className="screen">
+        <header className="subbar"><button className="icon-btn" aria-label="Back" onClick={() => go('/cards')}><Icon name="back" /></button></header>
+        <p className="empty">This item no longer exists.</p>
+      </div>
+    );
+  }
+
   const back = () => go(`/${item.kind}s`);
   const remove = () => { if (confirm(`Delete ${item.name}?`)) { deleteItem(item.id); back(); } };
-  const label = validityLabel(item);
   const setLogo = () => {
     const input = prompt('Store website for the logo (e.g. tesco.cz). Leave empty to remove.', item.domain ?? '');
     if (input === null) return;
@@ -31,15 +53,34 @@ export default function Detail({ id }: { id: number }) {
     updateItem(item.id, { domain });
     setRev(rev + 1);
   };
+  const chip = statusChip(item);
+
   return (
-    <div className="detail">
-      <header><button onClick={back}>‹ Back</button><Logo name={item.name} domain={item.domain ?? null} size={32} /><h1>{item.name}</h1></header>
-      {isArchived(item) ? <p className="expired">Expired</p> : isUpcoming(item) && <p className="upcoming">Not valid yet</p>}
-      {label && <p className="validity">{label}</p>}
-      <CodeView code={item.code} format={item.format} />
-      <p className="codetext">{item.code}</p>
-      <button onClick={setLogo}>{item.domain ? 'Change logo' : 'Set logo'}</button>
-      <button className="danger" onClick={remove}>Delete</button>
+    <div className="detail" style={{ background: color! }}>
+      <header className="subbar">
+        <button className="glass" aria-label="Back" onClick={back}><Icon name="back" /></button>
+      </header>
+      <div className="store">
+        <Logo name={item.name} domain={item.domain ?? null} mark />
+        <div>
+          <h1>{item.name}</h1>
+          <div className="sub">{[item.note, validityLabel(item)].filter(Boolean).join(' · ') || KIND_LABEL[item.kind]}</div>
+        </div>
+      </div>
+      <div className="sheet">
+        {chip && <span className={`chip status ${chip.tone}`}>{chip.text}</span>}
+        <div className="code-card">
+          <CodeView code={item.code} format={item.format} />
+          <p className="codetext">{item.code}</p>
+          <span className="format-label">{FORMAT_LABEL[item.format]}</span>
+        </div>
+        <p className="tip"><Icon name="sun" /> Turn the screen brightness up if the till can't read it. The screen stays on while this is open.</p>
+        <div className="actions">
+          <button className="action" onClick={() => go(`/edit/${item.id}`)}><Icon name="edit" size={20} />Edit</button>
+          <button className="action" onClick={setLogo}><Icon name="image" size={20} />Logo</button>
+          <button className="action danger" onClick={remove}><Icon name="trash" size={20} />Delete</button>
+        </div>
+      </div>
     </div>
   );
 }

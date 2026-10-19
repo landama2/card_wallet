@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { type Item, toDomain, logoUrl, initialOf, isArchived, isUpcoming, dayStart, dayEnd, toDateInput, validateCode, reminderTime, serialize, parseImport, dedupe, fromDetector } from './logic';
+import { type Item, statusChip, storeHue, FORMAT_LABEL, FORMATS, toDomain, logoUrl, initialOf, isArchived, isUpcoming, dayStart, dayEnd, toDateInput, validateCode, reminderTime, serialize, parseImport, dedupe, fromDetector } from './logic';
 
 const base: Item = { id: 1, kind: 'ticket', name: 'Concert', code: 'ABC', format: 'qr', color: null, note: null, expires_at: 1000, valid_from: null, domain: null, notify_id: 'n1', created_at: 1 };
 
@@ -12,6 +12,29 @@ test('store website input becomes a bare domain, or null if it is not one', () =
   assert.equal(toDomain(''), null);
   assert.equal(toDomain('a b.cz'), null);
   assert.equal(logoUrl('tesco.cz'), 'https://www.google.com/s2/favicons?domain=tesco.cz&sz=128');
+});
+
+test('status chip: coupons by calendar day, tickets with time, cards none', () => {
+  const at = (y: number, m: number, d: number, h = 12) => new Date(y, m - 1, d, h).getTime();
+  const fmt = (t: number) => toDateInput(t); // locale-free formatter for the test
+  const now = at(2026, 10, 19, 10);
+  const coupon = (from: string | null, until: string): Item => ({ ...base, kind: 'coupon', valid_from: from && dayStart(from), expires_at: dayEnd(until) });
+  assert.deepEqual(statusChip(coupon('2026-11-01', '2026-11-30'), now, fmt), { text: 'From 2026-11-01', tone: 'upcoming' });
+  assert.deepEqual(statusChip(coupon(null, '2026-10-19'), now, fmt), { text: 'Ends today', tone: 'soon' });
+  assert.deepEqual(statusChip(coupon(null, '2026-10-20'), now, fmt), { text: 'Ends tomorrow', tone: 'soon' });
+  assert.deepEqual(statusChip(coupon(null, '2026-10-22'), now, fmt), { text: 'Ends in 3 days', tone: 'soon' });
+  assert.deepEqual(statusChip(coupon(null, '2026-10-23'), now, fmt), { text: 'Until 2026-10-23', tone: 'ok' });
+  assert.deepEqual(statusChip(coupon(null, '2026-10-18'), now, fmt), { text: 'Expired 2026-10-18', tone: 'expired' });
+  const ticket: Item = { ...base, expires_at: at(2026, 10, 20, 20) };
+  assert.deepEqual(statusChip(ticket, now, fmt, (t) => fmt(t) + ' 20:00'), { text: 'Ends tomorrow, 2026-10-20 20:00', tone: 'soon' });
+  assert.equal(statusChip({ ...base, kind: 'card', expires_at: null }, now, fmt), null);
+});
+
+test('store colour is stable per name and every format has a label', () => {
+  assert.equal(storeHue('Tesco'), storeHue('Tesco'));
+  assert.notEqual(storeHue('Tesco'), storeHue('Albert'));
+  assert.ok(storeHue('Žabka') >= 0 && storeHue('Žabka') < 360);
+  for (const f of FORMATS) assert.ok(FORMAT_LABEL[f]);
 });
 
 test('fallback tile uses the first letter, uppercased, including accents', () => {
