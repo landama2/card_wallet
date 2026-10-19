@@ -11,7 +11,7 @@ export default defineConfig({
       srcDir: 'src',
       filename: 'sw.ts',
       registerType: 'autoUpdate',
-      injectManifest: { globPatterns: ['**/*.{js,css,html,png}'] },
+      injectManifest: { globPatterns: ['**/*.{js,css,html}'] },
       manifest: {
         name: 'Card Wallet',
         short_name: 'Wallet',
