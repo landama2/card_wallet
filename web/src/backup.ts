@@ -1,4 +1,4 @@
-import { deleteAll, insertItem, listItems } from './db';
+import { insertMany, listItems } from './db';
 import { type NewItem, dedupe, serialize } from './logic';
 
 export function exportBackup() {
@@ -10,7 +10,5 @@ export function exportBackup() {
 }
 
 export function applyImport(items: NewItem[], mode: 'merge' | 'replace') {
-  if (mode === 'replace') deleteAll();
-  const toAdd = mode === 'merge' ? dedupe(listItems(), items) : items;
-  toAdd.forEach(insertItem);
+  insertMany(mode === 'merge' ? dedupe(listItems(), items) : items, mode === 'replace');
 }

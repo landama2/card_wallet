@@ -16,4 +16,9 @@ export function insertItem(n: NewItem): number {
 }
 
 export const deleteItem = (id: number) => save(listItems().filter((i) => i.id !== id));
-export const deleteAll = () => save([]);
+
+export function insertMany(ns: NewItem[], replace: boolean) {
+  const items = replace ? [] : listItems();
+  let id = Math.max(0, ...items.map((i) => i.id));
+  save([...ns.map((n) => ({ ...n, id: ++id })), ...items]);
+}
