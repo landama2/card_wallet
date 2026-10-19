@@ -11,9 +11,10 @@ Notifications.setNotificationHandler({
 
 export const DAY = 86_400_000;
 export const getLead = () => Number(Storage.getItemSync('lead_ms') ?? DAY);
+let queue: Promise<void> = Promise.resolve();
 export const setLead = (ms: number) => {
   Storage.setItemSync('lead_ms', String(ms));
-  void rescheduleAll();
+  queue = queue.then(rescheduleAll).catch(() => {});
 };
 
 export async function schedule(item: Item) {
@@ -35,9 +36,9 @@ export async function cancel(item: Item) {
   if (item.notify_id) await Notifications.cancelScheduledNotificationAsync(item.notify_id);
 }
 
-async function rescheduleAll() {
+export async function rescheduleAll() {
+  await Notifications.cancelAllScheduledNotificationsAsync();
   for (const i of listItems()) {
-    await cancel(i);
     setNotifyId(i.id, null);
     await schedule({ ...i, notify_id: null });
   }
