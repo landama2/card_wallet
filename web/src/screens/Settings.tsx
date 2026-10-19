@@ -10,7 +10,9 @@ export default function Settings() {
     try { setPending(parseImport(await file.text())); }
     catch (e) { alert(`Import failed: ${String(e)}`); }
   };
-  const run = (mode: 'merge' | 'replace') => { applyImport(pending!, mode); setPending(null); alert('Import complete'); };
+  const run = (mode: 'merge' | 'replace') => {
+    if (mode === 'replace' && !confirm(`Replace all items with ${pending!.length} from backup?`)) return;
+    applyImport(pending!, mode); setPending(null); alert('Import complete'); };
   return (
     <div>
       <header><button onClick={() => go('/cards')}>‹ Back</button><h1>Settings</h1></header>
