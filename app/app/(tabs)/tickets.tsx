@@ -10,8 +10,8 @@ export default function Tickets() {
   const [showArchive, setShowArchive] = useState(false);
   useFocusEffect(useCallback(() => { setItems(listItems().filter((i) => i.kind === 'ticket')); }, []));
   const now = Date.now();
-  const active = items.filter((i) => !isArchived(i, now)).sort((a, b) => a.expires_at! - b.expires_at!);
-  const archive = items.filter((i) => isArchived(i, now)).sort((a, b) => b.expires_at! - a.expires_at!);
+  const active = items.filter((i) => !isArchived(i, now)).sort((a, b) => (a.expires_at ?? Infinity) - (b.expires_at ?? Infinity));
+  const archive = items.filter((i) => isArchived(i, now)).sort((a, b) => (b.expires_at ?? 0) - (a.expires_at ?? 0));
   return (
     <View style={{ flex: 1 }}>
       <ScrollView>
