@@ -1,0 +1,28 @@
+* { box-sizing: border-box; }
+body { margin: 0; font: 16px/1.4 system-ui, sans-serif; background: #fff; color: #111; }
+button, .button { font: inherit; padding: 12px; border: 1px solid #ccc; border-radius: 8px; background: #f4f4f4; color: inherit; cursor: pointer; text-align: center; }
+input { font: inherit; padding: 12px; border: 1px solid #ccc; border-radius: 8px; width: 100%; }
+header { display: flex; gap: 8px; align-items: center; padding: 8px; border-bottom: 1px solid #ddd; }
+header h1 { font-size: 20px; margin: 0; }
+main { padding: 8px 8px 80px; display: flex; flex-direction: column; gap: 8px; }
+.form { gap: 12px; }
+.tabs button { flex: 1; }
+.tabs button:last-child { flex: 0; }
+.tabs .on, .chips .on { background: #cde4ff; border-color: #69f; }
+.row { display: flex; flex-direction: column; align-items: flex-start; text-align: left; width: 100%; }
+.row .sub { font-size: 13px; color: #555; }
+.dim { opacity: 0.4; }
+.link { background: none; border: none; color: #36c; }
+.fab { position: fixed; bottom: 16px; left: 16px; right: 16px; background: #36c; color: #fff; border: none; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chips button { padding: 6px 10px; }
+.primary { background: #36c; color: #fff; border: none; }
+.danger { background: #fff; color: #c00; border-color: #c00; }
+.detail { min-height: 100vh; display: flex; flex-direction: column; }
+.code { padding: 16px; }
+.code svg { width: 100%; height: auto; max-height: 60vh; display: block; }
+.codetext { text-align: center; font-family: monospace; word-break: break-all; }
+.expired { color: #c00; text-align: center; margin: 0; }
+.confirm { display: flex; flex-direction: column; gap: 8px; padding: 12px; border: 1px solid #ddd; border-radius: 8px; }
+.scanner { position: fixed; inset: 0; background: #000; display: flex; flex-direction: column; }
+.scanner video { flex: 1; width: 100%; object-fit: cover; }
