@@ -43,10 +43,15 @@ export default function Add({ kind, shared }: { kind: 'card' | 'ticket'; shared:
     const expiresAt = kind === 'ticket' ? new Date(expires).getTime() : null;
     if (expiresAt != null && expiresAt < Date.now() && !confirm('Already expired. Save anyway?')) return;
     saving.current = true;
-    insertItem({
-      kind, name: name.trim(), code: code.trim(), format, color: null, note: null,
-      expires_at: expiresAt, notify_id: null, created_at: Date.now(),
-    });
+    try {
+      insertItem({
+        kind, name: name.trim(), code: code.trim(), format, color: null, note: null,
+        expires_at: expiresAt, notify_id: null, created_at: Date.now(),
+      });
+    } catch (e) {
+      saving.current = false;
+      return alert('Could not save: ' + String(e));
+    }
     back();
   };
 
