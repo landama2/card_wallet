@@ -1,8 +1,25 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { Item, isArchived, validateCode, reminderTime, serialize, parseImport, dedupe, fromDetector } from './logic';
+import { type Item, isArchived, isUpcoming, dayStart, dayEnd, toDateInput, validateCode, reminderTime, serialize, parseImport, dedupe, fromDetector } from './logic';
 
-const base: Item = { id: 1, kind: 'ticket', name: 'Concert', code: 'ABC', format: 'qr', color: null, note: null, expires_at: 1000, notify_id: 'n1', created_at: 1 };
+const base: Item = { id: 1, kind: 'ticket', name: 'Concert', code: 'ABC', format: 'qr', color: null, note: null, expires_at: 1000, valid_from: null, notify_id: 'n1', created_at: 1 };
+
+test('coupon dates cover whole local days', () => {
+  assert.equal(dayStart('2026-10-20'), new Date(2026, 9, 20).getTime());
+  assert.equal(dayEnd('2026-10-31'), new Date(2026, 10, 1).getTime() - 1);
+  assert.equal(toDateInput(dayStart('2026-01-05')), '2026-01-05');
+  assert.equal(toDateInput(dayEnd('2026-12-31')), '2026-12-31');
+});
+
+test('coupon is upcoming before valid_from, valid through the last day, then archived', () => {
+  const c: Item = { ...base, kind: 'coupon', valid_from: dayStart('2026-10-20'), expires_at: dayEnd('2026-10-31') };
+  const at = (y: number, m: number, d: number, h = 12) => new Date(y, m - 1, d, h).getTime();
+  assert.equal(isUpcoming(c, at(2026, 10, 19, 23)), true);
+  assert.equal(isUpcoming(c, at(2026, 10, 20, 0)), false);
+  assert.equal(isArchived(c, at(2026, 10, 31, 23)), false);
+  assert.equal(isArchived(c, at(2026, 11, 1, 0)), true);
+  assert.equal(isUpcoming({ ...c, valid_from: null }, at(2026, 1, 1)), false);
+});
 
 test('archive is derived from expiry; cards never archive', () => {
   assert.equal(isArchived(base, 2000), true);
@@ -34,6 +51,14 @@ test('export/import round trip, rejects garbage, dedupes', () => {
   assert.throws(() => parseImport('{"version":1,"items":[{"kind":"x"}]}'));
   assert.equal(dedupe([base], out).length, 0);
   assert.equal(dedupe([], out).length, 1);
+});
+
+test('coupons survive a backup round trip; old backups without valid_from still import', () => {
+  const [c] = parseImport(serialize([{ ...base, kind: 'coupon', valid_from: 5, expires_at: 9 }]));
+  assert.equal(c.kind, 'coupon');
+  assert.equal(c.valid_from, 5);
+  const [old] = parseImport('{"version":1,"items":[{"kind":"card","name":"A","code":"1","format":"qr"}]}');
+  assert.equal(old.valid_from, null);
 });
 
 test('detector format names map to ours', () => {
