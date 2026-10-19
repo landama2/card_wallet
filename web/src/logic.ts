@@ -6,6 +6,11 @@ export const BCID: Record<Format, string> = {
   code39: 'code39', pdf417: 'pdf417', aztec: 'azteccode', datamatrix: 'datamatrix',
 };
 
+// bwip-js options used to draw a code; shared by CodeView and the barcode round-trip tests.
+export const renderOptions = (code: string, format: Format) => ({
+  bcid: BCID[format], text: code, scale: 4, paddingwidth: 10, paddingheight: 10, backgroundcolor: 'FFFFFF',
+});
+
 export type Item = {
   id: number; kind: 'card' | 'ticket'; name: string; code: string; format: Format;
   color: string | null; note: string | null; expires_at: number | null;

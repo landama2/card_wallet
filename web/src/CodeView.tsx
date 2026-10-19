@@ -1,10 +1,10 @@
 import bwipjs from 'bwip-js/browser';
-import { BCID, type Format } from './logic';
+import { renderOptions, type Format } from './logic';
 
 export default function CodeView({ code, format }: { code: string; format: Format }) {
   let svg: string;
   try {
-    svg = bwipjs.toSVG({ bcid: BCID[format], text: code, scale: 4, paddingwidth: 10, paddingheight: 10, backgroundcolor: 'FFFFFF' });
+    svg = bwipjs.toSVG(renderOptions(code, format));
   } catch (e) {
     return <p>Cannot render this code: {String(e)}</p>;
   }

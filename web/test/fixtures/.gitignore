@@ -1,0 +1,4 @@
+# Real card images stay private: only these two files are committed.
+*
+!.gitignore
+!README.md
