@@ -22,11 +22,13 @@ self.addEventListener('fetch', (e) => {
   })());
 });
 
-// Store logos: cache-first, so they keep showing offline once seen.
+// Cache-first for things fetched from third parties that never change for a given URL, so they
+// keep working offline once seen: store logos, and the versioned OCR engine / barcode fallback on jsDelivr.
+const RUNTIME = ['https://www.google.com/s2/favicons', 'https://cdn.jsdelivr.net/npm/'];
 self.addEventListener('fetch', (e) => {
-  if (e.request.method !== 'GET' || !e.request.url.startsWith('https://www.google.com/s2/favicons')) return;
+  if (e.request.method !== 'GET' || !RUNTIME.some((p) => e.request.url.startsWith(p))) return;
   e.respondWith((async () => {
-    const cache = await caches.open('logos');
+    const cache = await caches.open('runtime');
     const hit = await cache.match(e.request);
     if (hit) return hit;
     const res = await fetch(e.request);

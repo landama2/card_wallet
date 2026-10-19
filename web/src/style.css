@@ -34,3 +34,4 @@ main { padding: 8px 8px 80px; display: flex; flex-direction: column; gap: 8px; }
 .with-logo { display: flex; gap: 8px; align-items: center; }
 .tabs button { min-width: 0; padding: 10px 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tabs button:last-child { flex: 0 0 44px; padding: 8px 0; font-size: 20px; }
+.hint { margin: 0; padding: 8px 12px; border-radius: 8px; background: #eef5ff; color: #234; font-size: 14px; }

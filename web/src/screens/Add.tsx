@@ -4,6 +4,8 @@ import { detectBlob } from '../detect';
 import { insertItem } from '../db';
 import Logo from '../Logo';
 import { FORMATS, KINDS, type Format, type Kind, dayEnd, dayStart, toDomain, validateCode } from '../logic';
+import { readLines } from '../ocr';
+import { guessFromText } from '../ocr-parse';
 import { go } from '../route';
 
 export default function Add({ kind: initialKind, shared }: { kind: Kind; shared: boolean }) {
@@ -20,12 +22,40 @@ export default function Add({ kind: initialKind, shared }: { kind: Kind; shared:
   const saving = useRef(false);
   const back = () => go(`/${kind}s`);
 
+  const [ocrNote, setOcrNote] = useState('');
+  const current = useRef({ name, website, from, until }); // latest values, for the async OCR fill below
+  current.current = { name, website, from, until };
+
   const fill = (r: { code: string; format: Format } | null) => {
     if (!r) return alert('No code found. Enter the code manually.');
     setCode(r.code);
     setFormat(r.format);
   };
-  const importBlob = async (blob: Blob) => fill(await detectBlob(blob).catch(() => null));
+
+  // Read the store name, website and coupon dates from the image; never overwrite what the user typed.
+  const readText = async (blob: Blob) => {
+    setOcrNote('Reading text from the image…');
+    try {
+      const g = guessFromText(await readLines(blob));
+      const filled: string[] = [];
+      const offer = (value: string | undefined, now: string, label: string, set: (v: string) => void) => {
+        if (value && !now) { set(value); filled.push(label); }
+      };
+      const c = current.current;
+      offer(g.name, c.name, 'name', setName);
+      offer(g.domain, c.website, 'website', setWebsite);
+      offer(g.from, c.from, 'valid from', setFrom);
+      offer(g.until, c.until, 'valid until', setUntil);
+      setOcrNote(filled.length ? `Filled from the image: ${filled.join(', ')}. Please check.` : 'No usable text found in the image.');
+    } catch {
+      setOcrNote('Text recognition is unavailable right now (it needs internet the first time).');
+    }
+  };
+
+  const importBlob = async (blob: Blob) => {
+    fill(await detectBlob(blob).catch(() => null));
+    await readText(blob);
+  };
 
   useEffect(() => {
     if (!shared) return;
@@ -79,6 +109,7 @@ export default function Add({ kind: initialKind, shared }: { kind: Kind; shared:
             {KINDS.map((k) => <button key={k} className={k === kind ? 'on' : ''} onClick={() => setKind(k)}>{k}</button>)}
           </div>
         )}
+        {ocrNote && <p className="hint" role="status">{ocrNote}</p>}
         <input placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} />
         <div className="with-logo">
           <Logo name={name} domain={toDomain(website)} />
