@@ -8,7 +8,7 @@ import { cancel, schedule } from './reminders';
 export async function exportBackup() {
   const f = new File(Paths.cache, 'wallet-backup.json');
   f.create({ overwrite: true });
-  f.write(serialize(listItems()));
+  await f.write(serialize(listItems()));
   await Sharing.shareAsync(f.uri, { mimeType: 'application/json' });
 }
 
