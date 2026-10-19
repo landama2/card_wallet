@@ -23,8 +23,8 @@ export default function Add({ kind: initialKind, shared }: { kind: Kind; shared:
   const back = () => go(`/${kind}s`);
 
   const [ocrNote, setOcrNote] = useState('');
-  const current = useRef({ name, website, from, until }); // latest values, for the async OCR fill below
-  current.current = { name, website, from, until };
+  const current = useRef({ kind, name, website, from, until }); // latest values, for the async OCR fill below
+  current.current = { kind, name, website, from, until };
 
   const fill = (r: { code: string; format: Format } | null) => {
     if (!r) return alert('No code found. Enter the code manually.');
@@ -37,28 +37,37 @@ export default function Add({ kind: initialKind, shared }: { kind: Kind; shared:
     setOcrNote('Reading text from the image…');
     try {
       const g = guessFromText(await readLines(blob));
-      const filled: string[] = [];
-      const offer = (value: string | undefined, now: string, label: string, set: (v: string) => void) => {
-        if (value && !now) { set(value); filled.push(label); }
-      };
       const c = current.current;
-      offer(g.name, c.name, 'name', setName);
-      offer(g.domain, c.website, 'website', setWebsite);
-      offer(g.from, c.from, 'valid from', setFrom);
-      offer(g.until, c.until, 'valid until', setUntil);
+      const filled: string[] = [];
+      if (g.name && !c.name) { setName(g.name); filled.push('name'); }
+      if (g.domain && !c.website) { setWebsite(g.domain); filled.push('website'); }
+      if (c.kind === 'coupon') {
+        // Keep "valid from" <= "valid until" together with whatever the user already entered.
+        const until = g.until && !c.until && (!c.from || c.from <= g.until) ? g.until : undefined;
+        const from = g.from && !c.from && (!(until || c.until) || g.from <= (until || c.until)) ? g.from : undefined;
+        if (from) { setFrom(from); filled.push('valid from'); }
+        if (until) { setUntil(until); filled.push('valid until'); }
+      }
       setOcrNote(filled.length ? `Filled from the image: ${filled.join(', ')}. Please check.` : 'No usable text found in the image.');
-    } catch {
+    } catch (e) {
+      console.error('OCR failed', e);
       setOcrNote('Text recognition is unavailable right now (it needs internet the first time).');
     }
   };
 
+  // Barcode and text recognition run side by side; a "No code found" alert waits for the text
+  // recognition, so the blocking dialog neither delays nor interrupts it.
   const importBlob = async (blob: Blob) => {
-    fill(await detectBlob(blob).catch(() => null));
-    await readText(blob);
+    const ocr = readText(blob);
+    const r = await detectBlob(blob).catch(() => null);
+    if (!r) await ocr;
+    fill(r);
   };
 
+  const sharedTaken = useRef(false); // StrictMode runs effects twice in dev; import the shared file once
   useEffect(() => {
-    if (!shared) return;
+    if (!shared || sharedTaken.current) return;
+    sharedTaken.current = true;
     (async () => {
       const cache = await caches.open('shared');
       const res = await cache.match('shared-file');
