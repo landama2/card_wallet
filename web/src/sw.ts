@@ -22,17 +22,25 @@ self.addEventListener('fetch', (e) => {
   })());
 });
 
-// Cache-first for things fetched from third parties that never change for a given URL, so they
-// keep working offline once seen: store logos, and the versioned OCR engine / barcode fallback on jsDelivr.
-const RUNTIME = ['https://www.google.com/s2/favicons', 'https://cdn.jsdelivr.net/npm/'];
+// Cache-first for files that never change for a given URL, so they keep working offline once seen.
+// Not precached: they are big (OCR) or per-user (logos), so they are only downloaded when used.
+const RUNTIME: { prefix: string; cache: string; keep: (res: Response) => boolean }[] = [
+  // Store logos: <img> requests are no-cors, so the response is opaque and its status unknown.
+  { prefix: 'https://www.google.com/s2/favicons', cache: 'logos', keep: (res) => res.ok || res.type === 'opaque' },
+  // Self-hosted OCR engine and language data (see vite.config.ts).
+  { prefix: new URL('ocr/', self.registration.scope).href, cache: 'ocr', keep: (res) => res.ok },
+  // Barcode fallback (zxing-wasm via barcode-detector), versioned URLs on jsDelivr.
+  { prefix: 'https://fastly.jsdelivr.net/npm/', cache: 'runtime', keep: (res) => res.ok },
+];
 self.addEventListener('fetch', (e) => {
-  if (e.request.method !== 'GET' || !RUNTIME.some((p) => e.request.url.startsWith(p))) return;
+  const rule = e.request.method === 'GET' && RUNTIME.find((r) => e.request.url.startsWith(r.prefix));
+  if (!rule) return;
   e.respondWith((async () => {
-    const cache = await caches.open('runtime');
+    const cache = await caches.open(rule.cache);
     const hit = await cache.match(e.request);
     if (hit) return hit;
     const res = await fetch(e.request);
-    if (res.ok || res.type === 'opaque') await cache.put(e.request, res.clone());
+    if (rule.keep(res)) await cache.put(e.request, res.clone());
     return res;
   })());
 });

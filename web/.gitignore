@@ -22,3 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Generated at build time by the ocr-files plugin in vite.config.ts
+public/ocr/
