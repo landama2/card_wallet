@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import Logo from '../Logo';
 import { listItems } from '../db';
 import { type Item, type Kind, KINDS, isArchived, isUpcoming, validityLabel } from '../logic';
 import { go } from '../route';
@@ -9,8 +10,11 @@ function Row({ item, dim }: { item: Item; dim?: boolean }) {
   const sub = validityLabel(item);
   return (
     <button className={'row' + (dim ? ' dim' : '')} onClick={() => go(`/item/${item.id}`)}>
-      <span className="name">{item.name}</span>
-      {sub && <span className="sub">{sub}</span>}
+      <Logo name={item.name} domain={item.domain ?? null} />
+      <span className="text">
+        <span className="name">{item.name}</span>
+        {sub && <span className="sub">{sub}</span>}
+      </span>
     </button>
   );
 }

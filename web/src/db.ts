@@ -17,6 +17,9 @@ export function insertItem(n: NewItem): number {
 
 export const deleteItem = (id: number) => save(listItems().filter((i) => i.id !== id));
 
+export const updateItem = (id: number, patch: Partial<NewItem>) =>
+  save(listItems().map((i) => (i.id === id ? { ...i, ...patch } : i)));
+
 export function insertMany(ns: NewItem[], replace: boolean) {
   const items = replace ? [] : listItems();
   let id = Math.max(0, ...items.map((i) => i.id));

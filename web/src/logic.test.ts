@@ -1,8 +1,24 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { type Item, isArchived, isUpcoming, dayStart, dayEnd, toDateInput, validateCode, reminderTime, serialize, parseImport, dedupe, fromDetector } from './logic';
+import { type Item, toDomain, logoUrl, initialOf, isArchived, isUpcoming, dayStart, dayEnd, toDateInput, validateCode, reminderTime, serialize, parseImport, dedupe, fromDetector } from './logic';
 
-const base: Item = { id: 1, kind: 'ticket', name: 'Concert', code: 'ABC', format: 'qr', color: null, note: null, expires_at: 1000, valid_from: null, notify_id: 'n1', created_at: 1 };
+const base: Item = { id: 1, kind: 'ticket', name: 'Concert', code: 'ABC', format: 'qr', color: null, note: null, expires_at: 1000, valid_from: null, domain: null, notify_id: 'n1', created_at: 1 };
+
+test('store website input becomes a bare domain, or null if it is not one', () => {
+  assert.equal(toDomain('tesco.cz'), 'tesco.cz');
+  assert.equal(toDomain('  https://www.Tesco.cz/clubcard?x=1 '), 'tesco.cz');
+  assert.equal(toDomain('http://shop.billa.cz:8080'), 'shop.billa.cz');
+  assert.equal(toDomain('Tesco'), null);
+  assert.equal(toDomain(''), null);
+  assert.equal(toDomain('a b.cz'), null);
+  assert.equal(logoUrl('tesco.cz'), 'https://www.google.com/s2/favicons?domain=tesco.cz&sz=128');
+});
+
+test('fallback tile uses the first letter, uppercased, including accents', () => {
+  assert.equal(initialOf('tesco'), 'T');
+  assert.equal(initialOf('  žabka'), 'Ž');
+  assert.equal(initialOf(''), '?');
+});
 
 test('coupon dates cover whole local days', () => {
   assert.equal(dayStart('2026-10-20'), new Date(2026, 9, 20).getTime());
@@ -63,6 +79,9 @@ test('coupons survive a backup round trip; old backups without valid_from still 
   assert.equal(c.valid_from, 5);
   const [old] = parseImport('{"version":1,"items":[{"kind":"card","name":"A","code":"1","format":"qr"}]}');
   assert.equal(old.valid_from, null);
+  assert.equal(old.domain, null);
+  assert.equal(parseImport(serialize([{ ...base, domain: 'tesco.cz' }]))[0].domain, 'tesco.cz');
+  assert.equal(parseImport('{"version":1,"items":[{"kind":"card","name":"A","code":"1","format":"qr","domain":"not a domain"}]}')[0].domain, null);
 });
 
 test('detector format names map to ours', () => {

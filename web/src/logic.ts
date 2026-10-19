@@ -19,8 +19,20 @@ export type Kind = (typeof KINDS)[number];
 export type Item = {
   id: number; kind: Kind; name: string; code: string; format: Format;
   color: string | null; note: string | null; expires_at: number | null; valid_from: number | null;
+  domain: string | null; // store website, e.g. 'tesco.cz'; drives the logo. Missing in items saved before logos.
   notify_id: string | null; created_at: number;
 };
+
+// 'https://www.Tesco.cz/club?x' -> 'tesco.cz'; null when the input isn't a domain.
+export function toDomain(s: string): string | null {
+  const host = s.trim().toLowerCase().replace(/^[a-z]+:\/\//, '').split(/[/?#:]/)[0].replace(/^www\./, '');
+  return /^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(host) ? host : null;
+}
+
+// ponytail: Google's public favicon service; tells Google which store domains you have. Self-host icons if that matters.
+export const logoUrl = (domain: string) => `https://www.google.com/s2/favicons?domain=${domain}&sz=128`;
+
+export const initialOf = (name: string) => [...name.trim()][0]?.toUpperCase() ?? '?';
 export type NewItem = Omit<Item, 'id'>;
 
 export const isArchived = (i: Item, now = Date.now()) =>
@@ -83,7 +95,8 @@ export function parseImport(json: string): NewItem[] {
       kind: x.kind, name: x.name, code: x.code, format: x.format,
       color: x.color ?? null, note: x.note ?? null,
       expires_at: typeof x.expires_at === 'number' ? x.expires_at : null,
-      valid_from: typeof x.valid_from === 'number' ? x.valid_from : null, notify_id: null, created_at: x.created_at ?? Date.now(),
+      valid_from: typeof x.valid_from === 'number' ? x.valid_from : null,
+      domain: typeof x.domain === 'string' ? toDomain(x.domain) : null, notify_id: null, created_at: x.created_at ?? Date.now(),
     };
   });
 }

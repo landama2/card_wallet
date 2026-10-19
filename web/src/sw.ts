@@ -22,4 +22,17 @@ self.addEventListener('fetch', (e) => {
   })());
 });
 
+// Store logos: cache-first, so they keep showing offline once seen.
+self.addEventListener('fetch', (e) => {
+  if (e.request.method !== 'GET' || !e.request.url.startsWith('https://www.google.com/s2/favicons')) return;
+  e.respondWith((async () => {
+    const cache = await caches.open('logos');
+    const hit = await cache.match(e.request);
+    if (hit) return hit;
+    const res = await fetch(e.request);
+    if (res.ok || res.type === 'opaque') await cache.put(e.request, res.clone());
+    return res;
+  })());
+});
+
 precacheAndRoute(self.__WB_MANIFEST);

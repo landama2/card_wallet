@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import Scanner from '../Scanner';
 import { detectBlob } from '../detect';
 import { insertItem } from '../db';
-import { FORMATS, KINDS, type Format, type Kind, dayEnd, dayStart, validateCode } from '../logic';
+import Logo from '../Logo';
+import { FORMATS, KINDS, type Format, type Kind, dayEnd, dayStart, toDomain, validateCode } from '../logic';
 import { go } from '../route';
 
 export default function Add({ kind: initialKind, shared }: { kind: Kind; shared: boolean }) {
@@ -14,6 +15,7 @@ export default function Add({ kind: initialKind, shared }: { kind: Kind; shared:
   const [expires, setExpires] = useState(''); // ticket: datetime-local value, local time
   const [from, setFrom] = useState(''); // coupon: date values (YYYY-MM-DD)
   const [until, setUntil] = useState('');
+  const [website, setWebsite] = useState('');
   const [scanning, setScanning] = useState(false);
   const saving = useRef(false);
   const back = () => go(`/${kind}s`);
@@ -43,6 +45,8 @@ export default function Add({ kind: initialKind, shared }: { kind: Kind; shared:
     if (!name.trim()) return alert('Name is required');
     const err = validateCode(format, code.trim());
     if (err) return alert(`Invalid code: ${err}`);
+    const domain = toDomain(website);
+    if (website.trim() && !domain) return alert('Store website should look like tesco.cz');
     if (kind === 'ticket' && !expires) return alert('Pick an expiry date');
     if (kind === 'coupon' && !until) return alert('Pick the last valid day');
     if (kind === 'coupon' && from && from > until) return alert('"Valid from" must not be after "Valid until"');
@@ -53,7 +57,7 @@ export default function Add({ kind: initialKind, shared }: { kind: Kind; shared:
     try {
       insertItem({
         kind, name: name.trim(), code: code.trim(), format, color: null, note: null,
-        expires_at: expiresAt, valid_from: validFrom, notify_id: null, created_at: Date.now(),
+        expires_at: expiresAt, valid_from: validFrom, domain, notify_id: null, created_at: Date.now(),
       });
     } catch (e) {
       saving.current = false;
@@ -76,6 +80,10 @@ export default function Add({ kind: initialKind, shared }: { kind: Kind; shared:
           </div>
         )}
         <input placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} />
+        <div className="with-logo">
+          <Logo name={name} domain={toDomain(website)} />
+          <input placeholder="Store website for the logo, e.g. tesco.cz (optional)" value={website} onChange={(e) => setWebsite(e.target.value)} />
+        </div>
         <input placeholder="Code / number" value={code} onChange={(e) => setCode(e.target.value)} />
         <div className="chips">
           {FORMATS.map((f) => (
