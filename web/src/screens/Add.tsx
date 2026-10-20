@@ -44,8 +44,8 @@ export default function Add({ kind: initialKind, shared, editId, scanning, initi
   const formatTouched = useRef(editing != null); // once the user picks a type (or a scan sets one), stop guessing
   const back = () => go(editing ? `/item/${editing.id}` : `/${kind}s`);
 
-  const current = useRef({ kind, name, website, from, until }); // latest values, for the async OCR fill below
-  current.current = { kind, name, website, from, until };
+  const current = useRef({ kind, name, website, from, until, scanning, code }); // latest values, for the async OCR fill below
+  current.current = { kind, name, website, from, until, scanning, code };
   const mark = (fields: Field[], text: string) => setFilled((f) => ({ ...f, ...Object.fromEntries(fields.map((k) => [k, text])) }));
   const typed = (field: Field, set: (v: string) => void) => (v: string) => {
     set(v);
@@ -54,7 +54,12 @@ export default function Add({ kind: initialKind, shared, editId, scanning, initi
   };
 
   const fill = (r: { code: string; format: Format } | null, source: string) => {
-    if (!r) { notify('No code found. Enter the code manually.'); return; }
+    if (!r) {
+      // Late OCR result: don't pop a dialog over the scanner, or after a code is already there.
+      if (current.current.scanning || current.current.code) return;
+      notify('No code found. Enter the code manually.');
+      return;
+    }
     setCode(r.code);
     setFormat(r.format);
     formatTouched.current = true;
@@ -213,7 +218,7 @@ export default function Add({ kind: initialKind, shared, editId, scanning, initi
         </label>
         <div className="pills" role="group" aria-label="Code type">
           {FORMATS.map((f) => (
-            <button key={f} aria-pressed={f === format} onClick={() => { formatTouched.current = true; setFormat(f); }}>{FORMAT_LABEL[f]}</button>
+            <button key={f} aria-pressed={f === format} onClick={() => { formatTouched.current = true; setFormat(f); setErrors(({ code: _gone, ...rest }) => rest); }}>{FORMAT_LABEL[f]}</button>
           ))}
         </div>
 

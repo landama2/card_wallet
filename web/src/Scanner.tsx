@@ -19,7 +19,7 @@ export default function Scanner({ onResult, onCancel, onManual }: Props) {
       const r = await detect(video.current!).catch(() => null);
       if (r && !done) { done = true; onResult(r); } else timer = window.setTimeout(tick, 250);
     };
-    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+    (navigator.mediaDevices?.getUserMedia({ video: { facingMode: 'environment' } }) ?? Promise.reject(new Error('no camera'))) // mediaDevices is missing on insecure origins
       .then(async (s) => {
         stream = s;
         if (done) { s.getTracks().forEach((t) => t.stop()); return; }
@@ -28,7 +28,7 @@ export default function Scanner({ onResult, onCancel, onManual }: Props) {
         setTrack(s.getVideoTracks()[0]);
         tick();
       })
-      .catch(() => { if (!done) setFailed(true); });
+      .catch(() => { stream?.getTracks().forEach((t) => t.stop()); if (!done) setFailed(true); });
     return () => { done = true; clearTimeout(timer); stream?.getTracks().forEach((t) => t.stop()); };
   }, []);
   // Torch: Chrome on Android only; the button appears only where the camera reports one.

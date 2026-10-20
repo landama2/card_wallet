@@ -40,3 +40,9 @@ test('restoreItem keeps a free id and picks a new one when taken', () => {
   assert.notEqual(newId, id);
   assert.equal(new Set(listItems().map((i) => i.id)).size, 2);
 });
+
+test('savedBeforeReplace is null when the stored copy is corrupt', () => {
+  localStorage.clear();
+  localStorage.setItem('wallet.beforeReplace', '{bad');
+  assert.equal(savedBeforeReplace(), null);
+});

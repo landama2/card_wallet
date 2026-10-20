@@ -26,7 +26,9 @@ export async function exportBackup(): Promise<boolean> {
 
 // The wallet from before the last Replace, until it's restored or replaced again.
 const BEFORE = 'wallet.beforeReplace';
-export const savedBeforeReplace = (): NewItem[] | null => JSON.parse(localStorage.getItem(BEFORE) ?? 'null');
+export const savedBeforeReplace = (): NewItem[] | null => {
+  try { return JSON.parse(localStorage.getItem(BEFORE) ?? 'null'); } catch { return null; } // corrupt copy: treat as none
+};
 export function restoreBeforeReplace() {
   const items = savedBeforeReplace() ?? [];
   insertMany(items, true);

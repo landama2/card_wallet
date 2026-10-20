@@ -41,6 +41,7 @@ export function DialogHost() {
     const onPop = () => {
       const r = top.current;
       if (!r) return;
+      top.current = undefined; // a second popstate before re-render must not drop the next queued dialog
       const v = answer.current !== undefined ? answer.current : r.input != null ? null : false;
       answer.current = undefined;
       setQueue((q) => q.slice(1));
