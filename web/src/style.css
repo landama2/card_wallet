@@ -220,3 +220,14 @@ h1, h2 { font-family: var(--display); margin: 0; }
 .input[aria-invalid='true'] { border-color: var(--danger); }
 .empty p { margin: 0 0 12px; }
 .empty .secondary { display: inline-flex; padding: 0 20px; }
+
+/* Developer: OCR details panel */
+.ocr-debug summary { font-weight: 700; cursor: pointer; }
+.ocr-debug h3 { margin: 6px 0 0; font-size: 14px; }
+.ocr-image { position: relative; }
+.ocr-image img { display: block; width: 100%; height: auto; border-radius: 8px; }
+.ocr-image svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.ocr-debug table { width: 100%; border-collapse: collapse; font-size: 12px; table-layout: fixed; }
+.ocr-debug th, .ocr-debug td { text-align: left; padding: 3px 4px; border-bottom: 1px solid var(--line, #8884); overflow-wrap: anywhere; vertical-align: top; }
+.ocr-debug th:first-child, .ocr-debug td:first-child { width: 4.5em; overflow-wrap: normal; }
+.ocr-debug pre { margin: 0; font-size: 12px; white-space: pre-wrap; }

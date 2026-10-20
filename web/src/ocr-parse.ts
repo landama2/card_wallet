@@ -77,7 +77,9 @@ function toYmd(d: number, m: number, y: number | undefined, now: number): string
   return ymdOf(date);
 }
 
-type Hit = { date: string; role: Role | null };
+export type Hit = { date: string; role: Role | null };
+// What the parser made of one line; filled only when a trace array is passed (developer panel).
+export type LineTrace = { text: string; height: number; dates: Hit[]; domain: string | null; name: string | null };
 
 function datesIn(text: string, now: number, pending: Role | null): Hit[] {
   const line = text.replace(/[–—]/g, '-');
@@ -136,7 +138,7 @@ function cleanName(text: string): string | null {
   return t === t.toUpperCase() ? titleCase(t) : t;
 }
 
-export function guessFromText(lines: OcrLine[], now = Date.now()): OcrGuess {
+export function guessFromText(lines: OcrLine[], now = Date.now(), trace?: LineTrace[]): OcrGuess {
   const guess: OcrGuess = {};
   const hits: Hit[] = [];
   const names: { name: string; height: number }[] = [];
@@ -149,6 +151,7 @@ export function guessFromText(lines: OcrLine[], now = Date.now()): OcrGuess {
     if (domain && !guess.domain) guess.domain = domain;
     const name = !dates.length ? cleanName(l.text) : null;
     if (name) names.push({ name, height: l.height });
+    trace?.push({ text: l.text, height: l.height, dates, domain, name });
   }
   // Among the tallest lines (within ~15%), the topmost: logos sit at the top.
   const tallest = Math.max(...names.map((n) => n.height));

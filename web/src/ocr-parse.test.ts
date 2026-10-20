@@ -111,3 +111,11 @@ test('nothing recognisable gives an empty guess', () => {
   assert.deepEqual(guessFromText([], NOW), {});
   assert.deepEqual(guessFromText([L('12 34'), L('!!!')], NOW), {});
 });
+
+test('trace explains each line', () => {
+  const trace: import('./ocr-parse').LineTrace[] = [];
+  guessFromText([L('ALBERT', 60), L('Platí do 31. 10. 2026'), L('www.albert.cz')], NOW, trace);
+  assert.deepEqual(trace.map((t) => [t.name, t.dates.map((d) => `${d.role} ${d.date}`), t.domain]), [
+    ['Albert', [], null], [null, ['until 2026-10-31'], null], [null, [], 'albert.cz'],
+  ]);
+});
