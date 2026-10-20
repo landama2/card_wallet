@@ -5,8 +5,10 @@ import { applyImport, exportBackup, lastExport, restoreBeforeReplace, savedBefor
 import { listItems } from '../db';
 import { type NewItem, daysAgo, dedupe, parseImport } from '../logic';
 import { go } from '../route';
+import { getTheme, setTheme } from '../theme';
 
 export default function Settings() {
+  const [theme, setThemeState] = useState(getTheme);
   const [last, setLast] = useState(lastExport);
   const [persisted, setPersisted] = useState<boolean | null>(null);
   useEffect(() => { navigator.storage?.persisted?.().then(setPersisted); }, []);
@@ -59,6 +61,14 @@ export default function Settings() {
         <h1>Settings</h1>
       </header>
       <main className="form">
+        <section className="panel">
+          <h2 className="section-label">Theme</h2>
+          <div className="segmented">
+            {(['system', 'light', 'dark'] as const).map((t) => (
+              <button key={t} aria-pressed={theme === t} onClick={() => { setTheme(t); setThemeState(t); }}>{t[0].toUpperCase() + t.slice(1)}</button>
+            ))}
+          </div>
+        </section>
         <section className="panel">
           <h2 className="section-label">Backup</h2>
           <p>Your cards are stored only on this phone. Export a backup now and then, and keep it somewhere safe.</p>

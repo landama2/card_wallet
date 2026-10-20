@@ -3,7 +3,10 @@ import { createRoot } from 'react-dom/client';
 import { registerSW } from 'virtual:pwa-register';
 import App from './App';
 import { DialogHost } from './Dialog';
+import { applyTheme } from './theme';
 import './style.css';
+
+applyTheme();
 
 registerSW({ immediate: true });
 navigator.storage?.persist?.();
