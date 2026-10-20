@@ -123,3 +123,10 @@ test('guessFormat picks a barcode type from a typed code', () => {
   assert.equal(guessFormat('Žabka 1'), 'qr'); // Code 128 can't hold non-ASCII
   assert.equal(guessFormat(''), 'qr');
 });
+
+test('import keeps an item whose code does not fit its format, as Code 128', () => {
+  const [bad] = parseImport('{"version":1,"items":[{"kind":"card","name":"A","code":"2900000000017","format":"ean13"}]}');
+  assert.equal(bad.format, 'code128');
+  const [good] = parseImport('{"version":1,"items":[{"kind":"card","name":"A","code":"4006381333931","format":"ean13"}]}');
+  assert.equal(good.format, 'ean13');
+});

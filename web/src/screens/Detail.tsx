@@ -71,7 +71,7 @@ export default function Detail({ id }: { id: number }) {
       <div className="sheet">
         {chip && <span className={`chip status ${chip.tone}`}>{chip.text}</span>}
         <div className="code-card">
-          <CodeView code={item.code} format={item.format} />
+          <CodeView code={item.code} format={item.format} editHref={`#/edit/${item.id}`} />
           <p className="codetext">{item.code}</p>
           <span className="format-label">{FORMAT_LABEL[item.format]}</span>
         </div>

@@ -132,7 +132,8 @@ export function parseImport(json: string): NewItem[] {
       && typeof x.code === 'string' && (FORMATS as readonly string[]).includes(x.format);
     if (!ok) throw new Error(`Item ${i + 1} in the backup is incomplete, so nothing was imported.`);
     return {
-      kind: x.kind, name: x.name, code: x.code, format: x.format,
+      // A code that breaks its format's rules (e.g. a bad EAN check digit) can't be drawn; Code 128 can draw any of them.
+      kind: x.kind, name: x.name, code: x.code, format: validateCode(x.format, x.code) ? 'code128' : x.format,
       color: x.color ?? null, note: x.note ?? null,
       expires_at: typeof x.expires_at === 'number' ? x.expires_at : null,
       valid_from: typeof x.valid_from === 'number' ? x.valid_from : null,

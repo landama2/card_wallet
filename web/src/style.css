@@ -81,6 +81,8 @@ h1, h2 { font-family: var(--display); margin: 0; }
 .code svg { width: 100%; height: auto; max-height: 42vh; display: block; }
 .codetext { font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 18px; letter-spacing: 2px; text-align: center; word-break: break-all; margin: 0; }
 .format-label { font-size: 12px; color: var(--muted); }
+.code-error { margin: 0; text-align: center; color: #5b616e; font-size: 14px; }
+.code-error a { color: #1f4fd1; font-weight: 600; }
 .status { align-self: center; }
 .tip { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-radius: 16px; background: #fff7e6; color: #6b4300; font-size: 14px; line-height: 1.35; }
 .actions { margin-top: auto; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
