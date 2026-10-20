@@ -9,7 +9,7 @@ export default function CodeView({ code, format, editHref }: { code: string; for
   } catch {
     return (
       <p className="code-error">
-        {/* stopPropagation: the code card around this opens till mode on click (Task 3). */}
+        {/* stopPropagation: the code card around this opens till mode on click. */}
         This code can't be drawn as {FORMAT_LABEL[format]}.{editHref && <> <a href={editHref} onClick={(e) => e.stopPropagation()}>Change the code type</a></>}
       </p>
     );

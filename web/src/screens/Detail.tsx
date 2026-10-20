@@ -86,7 +86,7 @@ export default function Detail({ id, till }: { id: number; till: boolean }) {
       <div className="sheet">
         {chip && <span className={`chip status ${chip.tone}`}>{chip.text}</span>}
         <div className="code-card" role="button" tabIndex={0} aria-label="Show code full screen"
-          onClick={() => openOverlay('till')} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') openOverlay('till'); }}>
+          onClick={() => openOverlay('till')} onKeyDown={(e) => { if (e.target !== e.currentTarget || (e.key !== 'Enter' && e.key !== ' ')) return; e.preventDefault(); openOverlay('till'); }}>
           <CodeView code={item.code} format={item.format} editHref={`#/edit/${item.id}`} />
           <p className="codetext">{item.code}</p>
           <span className="format-label">{FORMAT_LABEL[item.format]} · tap for full screen</span>
