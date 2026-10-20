@@ -103,6 +103,18 @@ export function validateCode(format: Format, code: string): string | null {
   return null;
 }
 
+// Best guess for a hand-typed code: retail barcodes by digit count and check digit, other text as Code 128.
+// Many till scanners read 1D codes only, so QR is the last resort.
+export function guessFormat(code: string): Format {
+  const c = code.trim();
+  if (/^\d+$/.test(c) && checkDigitOk(c)) {
+    if (c.length === 13) return 'ean13';
+    if (c.length === 12) return 'upc_a';
+    if (c.length === 8) return 'ean8';
+  }
+  return /^[\x20-\x7e]+$/.test(c) ? 'code128' : 'qr';
+}
+
 export const reminderTime = (expiresAt: number, leadMs: number, now: number) => {
   const t = expiresAt - leadMs;
   return t > now ? t : null;

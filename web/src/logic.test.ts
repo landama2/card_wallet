@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { type Item, statusChip, storeHue, FORMAT_LABEL, FORMATS, toDomain, logoUrl, initialOf, isArchived, isUpcoming, dayStart, dayEnd, toDateInput, validateCode, reminderTime, serialize, parseImport, dedupe, fromDetector } from './logic';
+import { type Item, statusChip, storeHue, FORMAT_LABEL, FORMATS, toDomain, logoUrl, initialOf, isArchived, isUpcoming, dayStart, dayEnd, toDateInput, validateCode, guessFormat, reminderTime, serialize, parseImport, dedupe, fromDetector } from './logic';
 
 const base: Item = { id: 1, kind: 'ticket', name: 'Concert', code: 'ABC', format: 'qr', color: null, note: null, expires_at: 1000, valid_from: null, domain: null, notify_id: 'n1', created_at: 1 };
 
@@ -112,4 +112,14 @@ test('detector format names map to ours', () => {
   assert.equal(fromDetector('qr_code'), 'qr');
   assert.equal(fromDetector('data_matrix'), 'datamatrix');
   assert.equal(fromDetector('itf'), null);
+});
+
+test('guessFormat picks a barcode type from a typed code', () => {
+  assert.equal(guessFormat('4006381333931'), 'ean13');
+  assert.equal(guessFormat('036000291452'), 'upc_a');
+  assert.equal(guessFormat('96385074'), 'ean8');
+  assert.equal(guessFormat('4006381333932'), 'code128'); // bad check digit: still a 1D code, not QR
+  assert.equal(guessFormat('ABC-123'), 'code128');
+  assert.equal(guessFormat('Žabka 1'), 'qr'); // Code 128 can't hold non-ASCII
+  assert.equal(guessFormat(''), 'qr');
 });

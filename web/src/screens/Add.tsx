@@ -5,7 +5,7 @@ import Logo from '../Logo';
 import Scanner from '../Scanner';
 import { detectBlob } from '../detect';
 import { getItem, insertItem, updateItem } from '../db';
-import { FORMATS, FORMAT_LABEL, KINDS, type Format, type Kind, dayEnd, dayStart, toDateInput, toDomain, validateCode } from '../logic';
+import { FORMATS, FORMAT_LABEL, KINDS, type Format, type Kind, dayEnd, dayStart, guessFormat, toDateInput, toDomain, validateCode } from '../logic';
 import { readLines } from '../ocr';
 import { guessFromText } from '../ocr-parse';
 import { go } from '../route';
@@ -36,6 +36,7 @@ export default function Add({ kind: initialKind, shared, editId }: { kind: Kind;
   const [ocrNote, setOcrNote] = useState('');
   const [reading, setReading] = useState(false);
   const saving = useRef(false);
+  const formatTouched = useRef(editing != null); // once the user picks a type (or a scan sets one), stop guessing
   const back = () => go(editing ? `/item/${editing.id}` : `/${kind}s`);
 
   const current = useRef({ kind, name, website, from, until }); // latest values, for the async OCR fill below
@@ -50,6 +51,7 @@ export default function Add({ kind: initialKind, shared, editId }: { kind: Kind;
     if (!r) { notify('No code found. Enter the code manually.'); return; }
     setCode(r.code);
     setFormat(r.format);
+    formatTouched.current = true;
     mark(['code'], `${FORMAT_LABEL[r.format]} · ${source}`);
   };
 
@@ -185,11 +187,11 @@ export default function Add({ kind: initialKind, shared, editId }: { kind: Kind;
 
         <label className="field">
           <span className="field-label">Code {badge('code')}</span>
-          <input className={cls('code')} value={code} onChange={(e) => typed('code', setCode)(e.target.value)} placeholder="Scan, import or type the number" autoCapitalize="none" />
+          <input className={cls('code')} value={code} onChange={(e) => { typed('code', setCode)(e.target.value); if (!formatTouched.current) setFormat(guessFormat(e.target.value)); }} placeholder="Scan, import or type the number" autoCapitalize="none" />
         </label>
         <div className="pills" role="group" aria-label="Code type">
           {FORMATS.map((f) => (
-            <button key={f} aria-pressed={f === format} onClick={() => setFormat(f)}>{FORMAT_LABEL[f]}</button>
+            <button key={f} aria-pressed={f === format} onClick={() => { formatTouched.current = true; setFormat(f); }}>{FORMAT_LABEL[f]}</button>
           ))}
         </div>
 
