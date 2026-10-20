@@ -3,7 +3,7 @@ import Icon, { type IconName } from '../Icon';
 import Logo, { tileColor } from '../Logo';
 import { lastExport, snoozeBackup, snoozedUntil } from '../backup';
 import { listItems } from '../db';
-import { type Item, type Kind, KINDS, backupDue, byRecent, daysAgo, isArchived, isUpcoming, statusChip } from '../logic';
+import { type Item, type Kind, KINDS, backupDue, byRecent, daysAgo, formatAmount, isArchived, isUpcoming, statusChip } from '../logic';
 import { go } from '../route';
 
 const TITLE: Record<Kind, string> = { card: 'Wallet', ticket: 'Tickets', coupon: 'Coupons', receipt: 'Receipts' };
@@ -35,7 +35,7 @@ function Row({ item, now, look }: { item: Item; now: number; look?: 'upcoming' |
       <span className="text">
         <span className="name">{item.name}</span>
         {chip && <span className={`chip ${chip.tone}`}>{chip.text}</span>}
-        {item.note && <span className="sub">{item.note}</span>}
+        {(item.amount != null || item.note) && <span className="sub">{[item.amount != null ? formatAmount(item.amount) : null, item.note].filter(Boolean).join(' · ')}</span>}
       </span>
     </button>
   );
@@ -48,7 +48,8 @@ export default function Lists({ tab }: { tab: Kind }) {
   const last = lastExport();
   const now = Date.now();
   const items = listItems().filter((i) => i.kind === tab);
-  const byExpiry = (a: Item, b: Item) => (a.expires_at ?? Infinity) - (b.expires_at ?? Infinity);
+  const byExpiry = (a: Item, b: Item) =>
+    (a.expires_at ?? Infinity) - (b.expires_at ?? Infinity) || (b.purchased_at ?? 0) - (a.purchased_at ?? 0);
   const live = items.filter((i) => !isArchived(i, now));
   const valid = live.filter((i) => !isUpcoming(i, now)).sort(byExpiry);
   const upcoming = live.filter((i) => isUpcoming(i, now)).sort((a, b) => a.valid_from! - b.valid_from!);

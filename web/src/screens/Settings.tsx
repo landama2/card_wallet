@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import Icon from '../Icon';
 import { ask } from '../Dialog';
-import { applyImport, exportBackup, lastExport, restoreBeforeReplace, savedBeforeReplace } from '../backup';
+import { applyImport, exportBackup, isZip, lastExport, restoreBeforeReplace, savedBeforeReplace, unzipBackup } from '../backup';
 import { listItems } from '../db';
 import { type NewItem, daysAgo, dedupe, parseImport } from '../logic';
 import { ocrDebugOn, setOcrDebug } from '../OcrDebug';
+import { clearPhotos, photoUsage, putPhoto } from '../photos';
 import { go } from '../route';
 import { getTheme, setTheme } from '../theme';
 
@@ -14,8 +15,10 @@ export default function Settings() {
   const [last, setLast] = useState(lastExport);
   const [persisted, setPersisted] = useState<boolean | null>(null);
   useEffect(() => { navigator.storage?.persisted?.().then(setPersisted); }, []);
-  const doExport = async () => { if (await exportBackup()) setLast(lastExport()); };
-  const [pending, setPending] = useState<{ items: NewItem[]; fresh: number } | null>(null);
+  const doExport = async (withPhotos: boolean) => { if (await exportBackup(withPhotos)) setLast(lastExport()); };
+  const [usage, setUsage] = useState<{ count: number; bytes: number } | null>(null);
+  useEffect(() => { photoUsage().then(setUsage).catch(() => {}); }, []);
+  const [pending, setPending] = useState<{ items: NewItem[]; photos: (Uint8Array | null)[] | null; missing: number; fresh: number } | null>(null);
   const [confirmReplace, setConfirmReplace] = useState(false);
   const [result, setResult] = useState<{ ok: boolean; title: string; detail?: string; undo?: boolean } | null>(null);
   const card = useRef<HTMLDivElement>(null);
@@ -28,9 +31,11 @@ export default function Settings() {
     if (!file) return;
     setResult(null); setConfirmReplace(false);
     try {
-      const items = parseImport(await file.text());
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      const zip = isZip(bytes) ? unzipBackup(bytes) : null;
+      const items = zip ? zip.items : parseImport(new TextDecoder().decode(bytes));
       if (items.length) {
-        setPending({ items, fresh: dedupe(listItems(), items).length });
+        setPending({ items, photos: zip?.photos ?? null, missing: zip?.missing ?? 0, fresh: dedupe(listItems(), items).length });
         setTimeout(() => panel.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }));
       } else { setPending(null); show({ ok: false, title: 'This backup is empty.' }); }
     } catch (e) {
@@ -38,14 +43,24 @@ export default function Settings() {
       show({ ok: false, title: e instanceof Error ? e.message : "That file couldn't be read." });
     }
   };
-  const run = (mode: 'merge' | 'replace') => {
-    const { added, skipped } = applyImport(pending!.items, mode);
+  // Replace clears every stored photo (their items are gone); then each imported item gets its photo, if the zip had one.
+  const run = async (mode: 'merge' | 'replace') => {
+    const p = pending!;
     setPending(null); setConfirmReplace(false);
+    const { added, skipped, ids } = applyImport(p.items, mode);
+    let failed = p.missing;
+    if (mode === 'replace') await clearPhotos().catch(() => {});
+    for (const [i, data] of (p.photos ?? []).entries()) {
+      if (!data || ids[i] == null) continue;
+      await putPhoto(ids[i]!, new Blob([data as Uint8Array<ArrayBuffer>], { type: 'image/jpeg' })).catch(() => { failed++; });
+    }
+    photoUsage().then(setUsage).catch(() => {});
     setBefore(savedBeforeReplace());
+    const lost = failed ? `${failed} ${failed === 1 ? 'photo' : 'photos'} couldn't be restored.` : undefined;
     show(mode === 'replace'
-      ? { ok: true, title: `Replaced your wallet with ${count(added)}.`, undo: savedBeforeReplace() != null }
+      ? { ok: true, title: `Replaced your wallet with ${count(added)}.`, detail: lost, undo: savedBeforeReplace() != null }
       : added
-        ? { ok: true, title: `Added ${count(added)}.`, detail: skipped ? `${skipped} already in your wallet, skipped.` : undefined }
+        ? { ok: true, title: `Added ${count(added)}.`, detail: [skipped ? `${skipped} already in your wallet, skipped.` : '', lost ?? ''].filter(Boolean).join(' ') || undefined }
         : { ok: true, title: 'Nothing new.', detail: `All ${skipped} are already in your wallet.` });
   };
   const restore = () => {
@@ -81,20 +96,24 @@ export default function Settings() {
         </section>
         <section className="panel">
           <h2 className="section-label">Backup</h2>
-          <p>Your cards are stored only on this phone. Export a backup now and then, and keep it somewhere safe.</p>
+          <p>Your cards, receipts and photos are stored only on this phone. Export a backup now and then, and keep it somewhere safe. Photos are only in the “with photos” backup, which contains your receipts in readable form.</p>
           <p className="backup-status">
             {last ? `Last backup: ${daysAgo(last)}` : 'No backup yet'}
+            {usage && usage.count > 0 && ` · ${usage.count} ${usage.count === 1 ? 'photo' : 'photos'}, ${(usage.bytes / 1_048_576).toFixed(1)} MB`}
             {persisted === false && ' · This browser may clear your data when the phone runs low on space'}
           </p>
           <div className="two">
-            <button className="secondary" onClick={doExport}><Icon name="download" size={20} />Export</button>
+            <button className="secondary" onClick={() => doExport(false)}><Icon name="download" size={20} />Export</button>
             {/* A filter is needed: without one Android offers photo/video capture and asks for camera and
                 microphone. Generic types are included because Android often reports .json files as those. */}
             <label className="secondary">
               <Icon name="upload" size={20} />Import
-              <input type="file" accept=".json,application/json,text/plain,application/octet-stream" className="sr-only" onChange={(e) => { pick(e.target.files?.[0]); e.target.value = ''; }} />
+              <input type="file" accept=".json,.zip,application/json,application/zip,text/plain,application/octet-stream" className="sr-only" onChange={(e) => { pick(e.target.files?.[0]); e.target.value = ''; }} />
             </label>
           </div>
+          {usage && usage.count > 0 && (
+            <button className="secondary" onClick={() => doExport(true)}><Icon name="download" size={20} />Export with photos (.zip)</button>
+          )}
           {before && !result?.undo && <button className="secondary" onClick={restoreLater}>Restore the wallet from before the last replace</button>}
           {result && (
             <div ref={card} tabIndex={-1} role={result.ok ? 'status' : 'alert'} className={`result ${result.ok ? 'ok' : 'err'}`}>
@@ -112,7 +131,7 @@ export default function Settings() {
           <section ref={panel} className="panel" role="region" aria-live="polite" aria-label="Import backup">
             {confirmReplace ? (
               <>
-                <p>This deletes your {count(listItems().length)} and loads {count(pending.items.length)} from the backup. You can restore them afterwards in Settings.</p>
+                <p>This deletes your {count(listItems().length)} and their photos, and loads {count(pending.items.length)} from the backup. You can restore the items (without photos) afterwards in Settings.</p>
                 <div className="row two">
                   <button className="secondary danger-text" onClick={() => run('replace')}>Yes, replace</button>
                   <button className="secondary" onClick={() => setConfirmReplace(false)}>Back</button>
