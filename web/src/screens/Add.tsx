@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { ask, notify } from '../Dialog';
 import Icon from '../Icon';
 import Logo from '../Logo';
+import OcrDebug, { ocrDebugOn } from '../OcrDebug';
 import Scanner from '../Scanner';
 import { detectBlob } from '../detect';
 import { getItem, insertItem, updateItem } from '../db';
@@ -187,6 +188,7 @@ export default function Add({ kind: initialKind, shared, editId, scanning, initi
             {reading && <span className="slow">Still working — the first read is the slowest. You can keep typing.</span>}
           </p>
         )}
+        {ocrNote && !reading && ocrDebugOn() && <OcrDebug />}
 
         <label className="field">
           <span className="field-label">Store name {badge('name')}</span>

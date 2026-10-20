@@ -4,11 +4,13 @@ import { ask } from '../Dialog';
 import { applyImport, exportBackup, lastExport, restoreBeforeReplace, savedBeforeReplace } from '../backup';
 import { listItems } from '../db';
 import { type NewItem, daysAgo, dedupe, parseImport } from '../logic';
+import { ocrDebugOn, setOcrDebug } from '../OcrDebug';
 import { go } from '../route';
 import { getTheme, setTheme } from '../theme';
 
 export default function Settings() {
   const [theme, setThemeState] = useState(getTheme);
+  const [ocrDebug, setOcrDebugState] = useState(ocrDebugOn);
   const [last, setLast] = useState(lastExport);
   const [persisted, setPersisted] = useState<boolean | null>(null);
   useEffect(() => { navigator.storage?.persisted?.().then(setPersisted); }, []);
@@ -66,6 +68,14 @@ export default function Settings() {
           <div className="segmented">
             {(['system', 'light', 'dark'] as const).map((t) => (
               <button key={t} aria-pressed={theme === t} onClick={() => { setTheme(t); setThemeState(t); }}>{t[0].toUpperCase() + t.slice(1)}</button>
+            ))}
+          </div>
+        </section>
+        <section className="panel">
+          <h2 className="section-label">Developer</h2>
+          <div className="segmented" role="group" aria-label="OCR details">
+            {([false, true] as const).map((on) => (
+              <button key={String(on)} aria-pressed={ocrDebug === on} onClick={() => { setOcrDebug(on); setOcrDebugState(on); }}>{on ? 'Show OCR details' : 'Hide OCR details'}</button>
             ))}
           </div>
         </section>

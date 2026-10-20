@@ -57,15 +57,19 @@ async function shrink(image: Blob): Promise<Blob> {
 }
 
 type Box = { x0: number; y0: number; x1: number; y1: number };
-type Line = { text: string; bbox: Box };
+type Line = { text: string; bbox: Box; confidence: number };
 
 async function pass(w: Tesseract.Worker, image: Blob, mode: '3' | '11'): Promise<Line[]> {
   await w.setParameters({ tessedit_pageseg_mode: mode as Tesseract.PSM });
   const { data } = await w.recognize(image, {}, { blocks: true });
   return (data.blocks ?? []).flatMap((b) => b.paragraphs.flatMap((p) => p.lines))
-    .filter((l) => l.confidence >= MIN_CONFIDENCE && l.text.trim())
-    .map((l) => ({ text: l.text.trim(), bbox: l.bbox }));
+    .filter((l) => l.text.trim())
+    .map((l) => ({ text: l.text.trim(), bbox: l.bbox, confidence: l.confidence }));
 }
+
+// The last read, for the developer "OCR details" panel: every line Tesseract returned, and its fate.
+export type SeenLine = Line & { pass: '3' | '11'; status: 'kept' | 'low confidence' | 'duplicate' };
+export let lastRead: { image: Blob; lines: SeenLine[]; parsed: OcrLine[] } | null = null;
 
 const key = (t: string) => t.toLowerCase().replace(/\s+/g, '');
 const area = (b: Box) => Math.max(0, b.x1 - b.x0) * Math.max(0, b.y1 - b.y0);
@@ -79,15 +83,23 @@ export function readLines(image: Blob): Promise<OcrLine[]> {
   const job = queue.then(async () => {
     clearTimeout(idle);
     try {
+      lastRead = null;
       const small = await shrink(image);
       const w = await getWorker();
-      const lines = await pass(w, small, '3');
-      for (const l of await pass(w, small, '11')) {
-        const dup = lines.some((e) => key(e.text).includes(key(l.text)) || overlap(e.bbox, l.bbox) > 0.5 * area(l.bbox));
-        if (!dup) lines.push(l);
+      const lines: Line[] = [], seen: SeenLine[] = [];
+      for (const mode of ['3', '11'] as const) {
+        for (const l of await pass(w, small, mode)) {
+          const status = l.confidence < MIN_CONFIDENCE ? 'low confidence'
+            : mode === '11' && lines.some((e) => key(e.text).includes(key(l.text)) || overlap(e.bbox, l.bbox) > 0.5 * area(l.bbox)) ? 'duplicate'
+            : 'kept';
+          if (status === 'kept') lines.push(l);
+          seen.push({ ...l, pass: mode, status });
+        }
       }
       // Top to bottom, as the parser expects; heights are in (possibly downscaled) image pixels.
-      return lines.sort((a, b) => a.bbox.y0 - b.bbox.y0).map((l) => ({ text: l.text, height: l.bbox.y1 - l.bbox.y0 }));
+      const parsed = lines.sort((a, b) => a.bbox.y0 - b.bbox.y0).map((l) => ({ text: l.text, height: l.bbox.y1 - l.bbox.y0 }));
+      lastRead = { image: small, lines: seen, parsed };
+      return parsed;
     } catch (e) {
       reset();
       throw e;
