@@ -49,23 +49,23 @@ export default function Settings() {
     const p = pending!;
     setPending(null); setConfirmReplace(false); setBusy(true);
     try {
-    if (mode === 'replace') {
-      try { await clearPhotos(); } catch { return show({ ok: false, title: "Couldn't reset the photos, so nothing was imported." }); }
-    }
-    const { added, skipped, ids } = applyImport(p.items, mode);
-    let failed = p.missing;
-    for (const [i, data] of (p.photos ?? []).entries()) {
-      if (!data || ids[i] == null) continue;
-      await putPhoto(ids[i]!, new Blob([data as Uint8Array<ArrayBuffer>], { type: 'image/jpeg' })).catch(() => { failed++; });
-    }
-    photoUsage().then(setUsage).catch(() => {});
-    setBefore(savedBeforeReplace());
-    const lost = failed ? `${failed} ${failed === 1 ? 'photo' : 'photos'} couldn't be restored.` : undefined;
-    show(mode === 'replace'
-      ? { ok: true, title: `Replaced your wallet with ${count(added)}.`, detail: lost, undo: savedBeforeReplace() != null }
-      : added
-        ? { ok: true, title: `Added ${count(added)}.`, detail: [skipped ? `${skipped} already in your wallet, skipped.` : '', lost ?? ''].filter(Boolean).join(' ') || undefined }
-        : { ok: true, title: 'Nothing new.', detail: `All ${skipped} are already in your wallet.` });
+      if (mode === 'replace') {
+        try { await clearPhotos(); } catch { return show({ ok: false, title: "Couldn't reset the photos, so nothing was imported." }); }
+      }
+      const { added, skipped, ids } = applyImport(p.items, mode);
+      let failed = p.missing;
+      for (const [i, data] of (p.photos ?? []).entries()) {
+        if (!data || ids[i] == null) continue;
+        await putPhoto(ids[i]!, new Blob([data as Uint8Array<ArrayBuffer>], { type: 'image/jpeg' })).catch(() => { failed++; });
+      }
+      photoUsage().then(setUsage).catch(() => {});
+      setBefore(savedBeforeReplace());
+      const lost = failed ? `${failed} ${failed === 1 ? 'photo' : 'photos'} couldn't be restored.` : undefined;
+      show(mode === 'replace'
+        ? { ok: true, title: `Replaced your wallet with ${count(added)}.`, detail: lost, undo: savedBeforeReplace() != null }
+        : added
+          ? { ok: true, title: `Added ${count(added)}.`, detail: [skipped ? `${skipped} already in your wallet, skipped.` : '', lost ?? ''].filter(Boolean).join(' ') || undefined }
+          : { ok: true, title: 'Nothing new.', detail: `All ${skipped} are already in your wallet.` });
     } finally { setBusy(false); }
   };
   // Restored items come back without photos, and their ids restart at 1, so no stored photo may remain to be mistaken for theirs.
