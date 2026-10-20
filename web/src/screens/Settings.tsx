@@ -99,7 +99,7 @@ export default function Settings() {
           <p>Your cards, receipts and photos are stored only on this phone. Export a backup now and then, and keep it somewhere safe. Photos are only in the “with photos” backup, which contains your receipts in readable form.</p>
           <p className="backup-status">
             {last ? `Last backup: ${daysAgo(last)}` : 'No backup yet'}
-            {usage && usage.count > 0 && ` · ${usage.count} ${usage.count === 1 ? 'photo' : 'photos'}, ${(usage.bytes / 1_048_576).toFixed(1)} MB`}
+            {usage && usage.count > 0 && ` · ${usage.count} ${usage.count === 1 ? 'photo' : 'photos'}, ${usage.bytes < 1_048_576 ? `${Math.ceil(usage.bytes / 1024)} KB` : `${(usage.bytes / 1_048_576).toFixed(1)} MB`}`}
             {persisted === false && ' · This browser may clear your data when the phone runs low on space'}
           </p>
           <div className="two">

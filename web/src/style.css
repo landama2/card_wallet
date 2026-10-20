@@ -145,7 +145,7 @@ h1, h2 { font-family: var(--display); margin: 0; }
 
 /* Forms */
 .form { flex: 1; padding: 8px 20px calc(96px + env(safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; gap: 14px; }
-.segmented { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; padding: 4px; border-radius: 14px; background: var(--seg-bg); }
+.segmented { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 4px; padding: 4px; border-radius: 14px; background: var(--seg-bg); }
 .segmented button { height: 44px; border: none; border-radius: 10px; background: transparent; color: var(--soft-ink); font-size: 14px; font-weight: 500; }
 .segmented button[aria-pressed='true'] { background: var(--seg-on); color: var(--ink); font-weight: 600; box-shadow: 0 1px 3px rgba(20, 22, 26, 0.12); }
 .banner { margin: 0; padding: 12px 14px; border-radius: 16px; background: var(--accent-soft); color: var(--accent-soft-ink); font-size: 14px; line-height: 1.35; }
@@ -234,8 +234,12 @@ h1, h2 { font-family: var(--display); margin: 0; }
 .check { display: flex; align-items: center; gap: 10px; min-height: 44px; font-size: 14px; color: var(--soft-ink); }
 .check input { width: 20px; height: 20px; accent-color: var(--accent); }
 .more { display: flex; flex-direction: column; gap: 12px; }
-.more summary { min-height: 44px; display: flex; align-items: center; font-size: 14px; font-weight: 600; color: var(--soft-ink); cursor: pointer; }
+.more summary { min-height: 44px; display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; color: var(--soft-ink); cursor: pointer; list-style: none; }
+.more summary::-webkit-details-marker { display: none; }
+.more summary::before { content: '▸'; transition: transform 0.15s; }
+.more[open] summary::before { transform: rotate(90deg); }
 .more[open] > :not(summary) { margin-top: 12px; }
+.more > .secondary { width: 100%; }
 
 .photo-row { display: flex; flex-direction: column; gap: 10px; }
 .photo-row .link-btn, .photo-add { align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; min-height: 44px; }

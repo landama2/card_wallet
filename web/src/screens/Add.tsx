@@ -16,6 +16,9 @@ import { closeOverlay, go, openOverlay } from '../route';
 const KIND_LABEL: Record<Kind, string> = { card: 'Card', ticket: 'Ticket', coupon: 'Coupon', receipt: 'Receipt' };
 type Field = 'name' | 'website' | 'code' | 'from' | 'until' | 'purchased' | 'amount';
 
+// 1250.5 -> '1250,50' for the amount field (Czech decimal comma).
+const amountText = (n: number) => n.toFixed(Number.isInteger(n) ? 0 : 2).replace('.', ',');
+
 // datetime-local value (local time) for an epoch time.
 const toDateTimeInput = (t: number) => {
   const d = new Date(t);
@@ -35,7 +38,7 @@ export default function Add({ kind: initialKind, shared, editId, scanning, initi
   const [until, setUntil] = useState(editing?.kind === 'coupon' && editing.expires_at ? toDateInput(editing.expires_at) : '');
   const [website, setWebsite] = useState(editing?.domain ?? '');
   const [purchased, setPurchased] = useState(editing?.purchased_at != null ? toDateInput(editing.purchased_at) : '');
-  const [amount, setAmount] = useState(editing?.amount != null ? String(editing.amount).replace('.', ',') : '');
+  const [amount, setAmount] = useState(editing?.amount != null ? amountText(editing.amount) : '');
   const [deadline, setDeadline] = useState(editing?.kind === 'receipt' && editing.expires_at ? toDateInput(editing.expires_at) : '');
   const [photo, setPhoto] = useState<Blob | null>(null); // the last image picked; saved with the item when keepPhoto
   const [keepPhoto, setKeepPhoto] = useState(true);
@@ -97,7 +100,7 @@ export default function Add({ kind: initialKind, shared, editId, scanning, initi
       if (c.kind === 'receipt') {
         const r = guessReceipt(lines.map((l) => l.text));
         if (r.purchased && !c.purchased) { setPurchased(r.purchased); got.push('purchased'); }
-        if (r.amount != null && !c.amount) { setAmount(String(r.amount).replace('.', ',')); got.push('amount'); }
+        if (r.amount != null && !c.amount) { setAmount(amountText(r.amount)); got.push('amount'); }
       }
       mark(got, 'from image');
       const words: Record<Field, string> = { name: 'name', website: 'website', code: 'code', from: 'valid from', until: 'valid until', purchased: 'purchase date', amount: 'amount' };
