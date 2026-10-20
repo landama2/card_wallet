@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { type Item, statusChip, storeHue, FORMAT_LABEL, FORMATS, toDomain, logoUrl, initialOf, isArchived, isUpcoming, dayStart, dayEnd, toDateInput, validateCode, reminderTime, serialize, parseImport, dedupe, fromDetector } from './logic';
+import { type Item, statusChip, storeHue, FORMAT_LABEL, FORMATS, toDomain, logoUrl, initialOf, isArchived, isUpcoming, dayStart, dayEnd, toDateInput, validateCode, guessFormat, reminderTime, serialize, parseImport, dedupe, fromDetector, byRecent, backupDue, daysAgo, validityLabel } from './logic';
 
 const base: Item = { id: 1, kind: 'ticket', name: 'Concert', code: 'ABC', format: 'qr', color: null, note: null, expires_at: 1000, valid_from: null, domain: null, notify_id: 'n1', created_at: 1 };
 
@@ -74,6 +74,7 @@ test('validateCode checks digits and check digit', () => {
   assert.equal(validateCode('ean13', '4006381333931'), null);
   assert.match(validateCode('ean13', '4006381333932')!, /Check digit/);
   assert.match(validateCode('ean13', '123')!, /13 digits/);
+  assert.match(validateCode('ean13', '123')!, /^EAN-13 needs/);
   assert.equal(validateCode('ean8', '96385074'), null);
   assert.equal(validateCode('upc_a', '036000291452'), null);
   assert.equal(validateCode('qr', 'anything'), null);
@@ -112,4 +113,46 @@ test('detector format names map to ours', () => {
   assert.equal(fromDetector('qr_code'), 'qr');
   assert.equal(fromDetector('data_matrix'), 'datamatrix');
   assert.equal(fromDetector('itf'), null);
+});
+
+test('guessFormat picks a barcode type from a typed code', () => {
+  assert.equal(guessFormat('4006381333931'), 'ean13');
+  assert.equal(guessFormat('036000291452'), 'upc_a');
+  assert.equal(guessFormat('96385074'), 'ean8');
+  assert.equal(guessFormat('4006381333932'), 'code128'); // bad check digit: still a 1D code, not QR
+  assert.equal(guessFormat('ABC-123'), 'code128');
+  assert.equal(guessFormat('Žabka 1'), 'qr'); // Code 128 can't hold non-ASCII
+  assert.equal(guessFormat(''), 'qr');
+});
+
+test('import keeps an item whose code does not fit its format, as Code 128', () => {
+  const [bad] = parseImport('{"version":1,"items":[{"kind":"card","name":"A","code":"2900000000017","format":"ean13"}]}');
+  assert.equal(bad.format, 'code128');
+  const [good] = parseImport('{"version":1,"items":[{"kind":"card","name":"A","code":"4006381333931","format":"ean13"}]}');
+  assert.equal(good.format, 'ean13');
+});
+
+test('cards sort by last use, then A–Z; last use survives a backup', () => {
+  const c = (name: string, last_used_at?: number): Item => ({ ...base, kind: 'card', name, last_used_at });
+  assert.deepEqual([c('B'), c('A'), c('Old', 5), c('New', 9)].sort(byRecent).map((i) => i.name), ['New', 'Old', 'A', 'B']);
+  assert.equal(parseImport(serialize([{ ...base, last_used_at: 7 }]))[0].last_used_at, 7);
+  assert.equal(parseImport('{"version":1,"items":[{"kind":"card","name":"A","code":"1","format":"qr"}]}')[0].last_used_at, null);
+});
+
+test('backup reminder: due with items and no export in 30 days, unless snoozed', () => {
+  const D = 86_400_000, now = 100 * D;
+  assert.equal(backupDue(0, null, 0, now), false);
+  assert.equal(backupDue(3, null, 0, now), true);
+  assert.equal(backupDue(3, now - 10 * D, 0, now), false);
+  assert.equal(backupDue(3, now - 31 * D, 0, now), true);
+  assert.equal(backupDue(3, null, now + D, now), false);
+  assert.equal(daysAgo(now, now, 'en'), 'today');
+  assert.equal(daysAgo(now - 3 * D, now, 'en'), '3 days ago');
+});
+test('ticket chip shows only the time when it ends today; labels have no seconds', () => {
+  const at = (y: number, m: number, d: number, h = 12, min = 0, s = 0) => new Date(y, m - 1, d, h, min, s).getTime();
+  const fmt = (t: number) => toDateInput(t);
+  const now = at(2026, 10, 19, 10);
+  assert.deepEqual(statusChip({ ...base, expires_at: at(2026, 10, 19, 20) }, now, fmt, fmt, () => '20:00'), { text: 'Ends today, 20:00', tone: 'soon' });
+  assert.doesNotMatch(validityLabel({ ...base, expires_at: at(2026, 10, 20, 15, 40, 54) })!, /54/);
 });

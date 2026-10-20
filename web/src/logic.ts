@@ -20,6 +20,7 @@ export type Item = {
   id: number; kind: Kind; name: string; code: string; format: Format;
   color: string | null; note: string | null; expires_at: number | null; valid_from: number | null;
   domain: string | null; // store website, e.g. 'tesco.cz'; drives the logo. Missing in items saved before logos.
+  last_used_at?: number | null; // when its detail screen was last opened; missing in items saved before this
   notify_id: string | null; created_at: number;
 };
 
@@ -40,6 +41,10 @@ export const isArchived = (i: Item, now = Date.now()) =>
 
 export const isUpcoming = (i: Item, now = Date.now()) => i.valid_from != null && now < i.valid_from;
 
+// Cards: most recently opened first; never-opened cards after them, A–Z.
+export const byRecent = (a: Item, b: Item) =>
+  (b.last_used_at ?? 0) - (a.last_used_at ?? 0) || a.name.localeCompare(b.name);
+
 // '2026-10-20' (an <input type="date"> value) <-> local day boundaries.
 const ymd = (s: string) => s.split('-').map(Number) as [number, number, number];
 export const dayStart = (s: string) => { const [y, m, d] = ymd(s); return new Date(y, m - 1, d).getTime(); };
@@ -48,15 +53,18 @@ export const FORMAT_LABEL: Record<Format, string> = {
   qr: 'QR', ean13: 'EAN-13', ean8: 'EAN-8', upc_a: 'UPC-A', code128: 'Code 128',
   code39: 'Code 39', pdf417: 'PDF417', aztec: 'Aztec', datamatrix: 'Data Matrix',
 };
+// 1D barcodes: in till mode they turn sideways so the bars use the long side of the screen.
+export const LINEAR = new Set<Format>(['ean13', 'ean8', 'upc_a', 'code128', 'code39']);
 
 // Stable hue per store name: the colour of its tile, detail screen and fallback logo.
 export const storeHue = (name: string) => [...name.trim().toLowerCase()].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7);
 
 const shortDate = (t: number) => new Date(t).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
 const shortDateTime = (t: number) => new Date(t).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+const shortTime = (t: number) => new Date(t).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
 
 // The chip on list rows: how soon a ticket/coupon ends, or when it starts. Cards have none.
-export function statusChip(i: Item, now = Date.now(), date = shortDate, dateTime = shortDateTime):
+export function statusChip(i: Item, now = Date.now(), date = shortDate, dateTime = shortDateTime, time = shortTime):
   { text: string; tone: 'soon' | 'ok' | 'upcoming' | 'expired' } | null {
   if (i.kind === 'card' || i.expires_at == null) return null;
   const when = i.kind === 'ticket' ? dateTime : date;
@@ -64,7 +72,7 @@ export function statusChip(i: Item, now = Date.now(), date = shortDate, dateTime
   if (isArchived(i, now)) return { text: `Expired ${date(i.expires_at)}`, tone: 'expired' };
   const midnight = (t: number) => { const d = new Date(t); return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime(); };
   const days = Math.round((midnight(i.expires_at) - midnight(now)) / 86_400_000);
-  const suffix = i.kind === 'ticket' ? `, ${when(i.expires_at)}` : '';
+  const suffix = i.kind !== 'ticket' ? '' : `, ${days === 0 ? time(i.expires_at) : when(i.expires_at)}`;
   if (days === 0) return { text: `Ends today${suffix}`, tone: 'soon' };
   if (days === 1) return { text: `Ends tomorrow${suffix}`, tone: 'soon' };
   if (days <= 3) return { text: `Ends in ${days} days${suffix}`, tone: 'soon' };
@@ -74,9 +82,9 @@ export function statusChip(i: Item, now = Date.now(), date = shortDate, dateTime
 // Row/detail subtitle: ticket = date + time, coupon = date range (time of day is irrelevant).
 export function validityLabel(i: Item): string | null {
   if (i.expires_at == null) return null;
-  if (i.kind !== 'coupon') return new Date(i.expires_at).toLocaleString();
-  const until = new Date(i.expires_at).toLocaleDateString();
-  return i.valid_from == null ? `Valid until ${until}` : `Valid ${new Date(i.valid_from).toLocaleDateString()} – ${until}`;
+  if (i.kind !== 'coupon') return new Date(i.expires_at).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+  const day = (t: number) => new Date(t).toLocaleDateString(undefined, { dateStyle: 'medium' });
+  return i.valid_from == null ? `Valid until ${day(i.expires_at)}` : `Valid ${day(i.valid_from)} – ${day(i.expires_at)}`;
 }
 
 export const toDateInput = (t: number) => {
@@ -97,10 +105,22 @@ export function validateCode(format: Format, code: string): string | null {
   if (!code) return 'Code is empty';
   const n = DIGITS[format];
   if (n) {
-    if (!new RegExp(`^\\d{${n}}$`).test(code)) return `${format} needs exactly ${n} digits`;
+    if (!new RegExp(`^\\d{${n}}$`).test(code)) return `${FORMAT_LABEL[format]} needs exactly ${n} digits`;
     if (!checkDigitOk(code)) return 'Check digit is wrong';
   }
   return null;
+}
+
+// Best guess for a hand-typed code: retail barcodes by digit count and check digit, other text as Code 128.
+// Many till scanners read 1D codes only, so QR is the last resort.
+export function guessFormat(code: string): Format {
+  const c = code.trim();
+  if (/^\d+$/.test(c) && checkDigitOk(c)) {
+    if (c.length === 13) return 'ean13';
+    if (c.length === 12) return 'upc_a';
+    if (c.length === 8) return 'ean8';
+  }
+  return /^[\x20-\x7e]+$/.test(c) ? 'code128' : 'qr';
 }
 
 export const reminderTime = (expiresAt: number, leadMs: number, now: number) => {
@@ -120,11 +140,14 @@ export function parseImport(json: string): NewItem[] {
       && typeof x.code === 'string' && (FORMATS as readonly string[]).includes(x.format);
     if (!ok) throw new Error(`Item ${i + 1} in the backup is incomplete, so nothing was imported.`);
     return {
-      kind: x.kind, name: x.name, code: x.code, format: x.format,
+      // A code that breaks its format's rules (e.g. a bad EAN check digit) can't be drawn; Code 128 can draw any of them.
+      kind: x.kind, name: x.name, code: x.code, format: validateCode(x.format, x.code) ? 'code128' : x.format,
       color: x.color ?? null, note: x.note ?? null,
       expires_at: typeof x.expires_at === 'number' ? x.expires_at : null,
       valid_from: typeof x.valid_from === 'number' ? x.valid_from : null,
-      domain: typeof x.domain === 'string' ? toDomain(x.domain) : null, notify_id: null, created_at: x.created_at ?? Date.now(),
+      domain: typeof x.domain === 'string' ? toDomain(x.domain) : null,
+      last_used_at: typeof x.last_used_at === 'number' ? x.last_used_at : null,
+      notify_id: null, created_at: x.created_at ?? Date.now(),
     };
   });
 }
@@ -140,3 +163,12 @@ export const DETECTOR_FORMAT: Record<Format, string> = {
 
 export const fromDetector = (f: string): Format | null =>
   FORMATS.find((k) => DETECTOR_FORMAT[k] === f) ?? null;
+
+const DAY = 86_400_000;
+// The list asks for a backup when there's something to lose and the last export is over 30 days old (or never).
+export const backupDue = (itemCount: number, lastExport: number | null, snoozedUntil: number, now = Date.now()) =>
+  itemCount > 0 && now >= snoozedUntil && (lastExport == null || now - lastExport > 30 * DAY);
+
+// 'today', 'yesterday', '3 days ago'.
+export const daysAgo = (t: number, now = Date.now(), locale?: string) =>
+  new Intl.RelativeTimeFormat(locale, { numeric: 'auto' }).format(-Math.floor((now - t) / DAY), 'day');

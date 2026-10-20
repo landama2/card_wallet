@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import Icon, { type IconName } from '../Icon';
 import Logo, { tileColor } from '../Logo';
+import { lastExport, snoozeBackup, snoozedUntil } from '../backup';
 import { listItems } from '../db';
-import { type Item, type Kind, KINDS, isArchived, isUpcoming, statusChip } from '../logic';
+import { type Item, type Kind, KINDS, backupDue, byRecent, daysAgo, isArchived, isUpcoming, statusChip } from '../logic';
 import { go } from '../route';
 
 const TITLE: Record<Kind, string> = { card: 'Wallet', ticket: 'Tickets', coupon: 'Coupons' };
@@ -10,7 +11,7 @@ const TAB: Record<Kind, { label: string; icon: IconName }> = {
   card: { label: 'Cards', icon: 'card' }, ticket: { label: 'Tickets', icon: 'ticket' }, coupon: { label: 'Coupons', icon: 'coupon' },
 };
 const EMPTY: Record<Kind, string> = {
-  card: 'No cards yet. Tap + to scan or import your first loyalty card.',
+  card: 'No cards yet. Tap + to scan a card or add it from a photo.',
   ticket: 'No tickets. Tap + to add one; it moves to the archive when it expires.',
   coupon: 'No coupons. Tap + and import a screenshot: the store and dates are filled in for you.',
 };
@@ -31,9 +32,9 @@ function Row({ item, now, look }: { item: Item; now: number; look?: 'upcoming' |
       <Logo name={item.name} domain={item.domain ?? null} />
       <span className="text">
         <span className="name">{item.name}</span>
+        {chip && <span className={`chip ${chip.tone}`}>{chip.text}</span>}
         {item.note && <span className="sub">{item.note}</span>}
       </span>
-      {chip && <span className={`chip ${chip.tone}`}>{chip.text}</span>}
     </button>
   );
 }
@@ -41,6 +42,8 @@ function Row({ item, now, look }: { item: Item; now: number; look?: 'upcoming' |
 export default function Lists({ tab }: { tab: Kind }) {
   const [q, setQ] = useState('');
   const [showArchive, setShowArchive] = useState(false);
+  const [nag, setNag] = useState(() => backupDue(listItems().length, lastExport(), snoozedUntil()));
+  const last = lastExport();
   const now = Date.now();
   const items = listItems().filter((i) => i.kind === tab);
   const byExpiry = (a: Item, b: Item) => (a.expires_at ?? Infinity) - (b.expires_at ?? Infinity);
@@ -48,7 +51,8 @@ export default function Lists({ tab }: { tab: Kind }) {
   const valid = live.filter((i) => !isUpcoming(i, now)).sort(byExpiry);
   const upcoming = live.filter((i) => isUpcoming(i, now)).sort((a, b) => a.valid_from! - b.valid_from!);
   const archive = items.filter((i) => isArchived(i, now)).sort((a, b) => (b.expires_at ?? 0) - (a.expires_at ?? 0));
-  const cards = items.filter((i) => i.name.toLowerCase().includes(q.trim().toLowerCase()));
+  const needle = q.trim().toLowerCase();
+  const cards = items.filter((i) => [i.name, i.note ?? '', i.code].some((s) => s.toLowerCase().includes(needle))).sort(byRecent);
   return (
     <div className="screen">
       <header className="topbar">
@@ -57,6 +61,15 @@ export default function Lists({ tab }: { tab: Kind }) {
       </header>
 
       <main className="content">
+        {nag && (
+          <div className="banner nag" role="status">
+            <span>{last ? `Last backup ${daysAgo(last)}.` : 'No backup yet.'} Your cards are stored only on this phone.</span>
+            <div className="nag-actions">
+              <button className="secondary" onClick={() => go('/settings')}>Back up now</button>
+              <button className="link-btn" onClick={() => { snoozeBackup(); setNag(false); }}>Later</button>
+            </div>
+          </div>
+        )}
         {items.length === 0 && <p className="empty">{EMPTY[tab]}</p>}
         {tab === 'card' && items.length > 0 && (
           <>
@@ -66,6 +79,12 @@ export default function Lists({ tab }: { tab: Kind }) {
             </label>
             <h2 className="section-label">Loyalty cards · {cards.length}</h2>
             <div className="tiles">{cards.map((i) => <Tile key={i.id} item={i} />)}</div>
+            {cards.length === 0 && needle && (
+              <div className="empty">
+                <p>No card matches “{q.trim()}”.</p>
+                <button className="secondary" onClick={() => go(`/add?kind=card&name=${encodeURIComponent(q.trim())}`)}>Add “{q.trim()}”</button>
+              </div>
+            )}
           </>
         )}
         {tab !== 'card' && items.length > 0 && (
