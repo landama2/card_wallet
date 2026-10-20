@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import CodeView from '../CodeView';
+import { ask, askText, notify } from '../Dialog';
 import Icon from '../Icon';
 import Logo, { tileColor } from '../Logo';
 import { deleteItem, getItem, updateItem } from '../db';
@@ -44,12 +45,12 @@ export default function Detail({ id }: { id: number }) {
   }
 
   const back = () => go(`/${item.kind}s`);
-  const remove = () => { if (confirm(`Delete ${item.name}?`)) { deleteItem(item.id); back(); } };
-  const setLogo = () => {
-    const input = prompt('Store website for the logo (e.g. tesco.cz). Leave empty to remove.', item.domain ?? '');
+  const remove = async () => { if (await ask(`Delete ${item.name}?`, 'Delete', true)) { deleteItem(item.id); back(); } };
+  const setLogo = async () => {
+    const input = await askText('Store website for the logo (e.g. tesco.cz). Leave empty to remove.', item.domain ?? '');
     if (input === null) return;
     const domain = toDomain(input);
-    if (input.trim() && !domain) return alert('Store website should look like tesco.cz');
+    if (input.trim() && !domain) return notify('Store website should look like tesco.cz');
     updateItem(item.id, { domain });
     setRev(rev + 1);
   };

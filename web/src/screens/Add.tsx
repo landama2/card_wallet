@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { ask, notify } from '../Dialog';
 import Icon from '../Icon';
 import Logo from '../Logo';
 import Scanner from '../Scanner';
@@ -33,6 +34,7 @@ export default function Add({ kind: initialKind, shared, editId }: { kind: Kind;
   const [scanning, setScanning] = useState(false);
   const [filled, setFilled] = useState<Partial<Record<Field, string>>>({}); // field -> badge text
   const [ocrNote, setOcrNote] = useState('');
+  const [reading, setReading] = useState(false);
   const saving = useRef(false);
   const back = () => go(editing ? `/item/${editing.id}` : `/${kind}s`);
 
@@ -45,7 +47,7 @@ export default function Add({ kind: initialKind, shared, editId }: { kind: Kind;
   };
 
   const fill = (r: { code: string; format: Format } | null, source: string) => {
-    if (!r) return alert('No code found. Enter the code manually.');
+    if (!r) { notify('No code found. Enter the code manually.'); return; }
     setCode(r.code);
     setFormat(r.format);
     mark(['code'], `${FORMAT_LABEL[r.format]} · ${source}`);
@@ -54,6 +56,7 @@ export default function Add({ kind: initialKind, shared, editId }: { kind: Kind;
   // Read the store name, website and coupon dates from the image; never overwrite what the user typed.
   const readText = async (blob: Blob) => {
     setOcrNote('Reading text from the image…');
+    setReading(true);
     try {
       const g = guessFromText(await readLines(blob));
       const c = current.current;
@@ -73,6 +76,8 @@ export default function Add({ kind: initialKind, shared, editId }: { kind: Kind;
     } catch (e) {
       console.error('OCR failed', e);
       setOcrNote('Text recognition is unavailable right now (it needs internet the first time).');
+    } finally {
+      setReading(false);
     }
   };
 
@@ -95,24 +100,25 @@ export default function Add({ kind: initialKind, shared, editId }: { kind: Kind;
       if (!res) return;
       await cache.delete('shared-file');
       const blob = await res.blob();
-      if (blob.type === 'application/pdf') alert('PDF codes cannot be decoded. Enter the code manually.');
+      if (blob.type === 'application/pdf') notify('PDF codes cannot be decoded. Enter the code manually.');
       else await importBlob(blob);
     })();
   }, [shared]);
 
-  const save = () => {
+  const save = async () => {
     if (saving.current) return;
-    if (!name.trim()) return alert('Name is required');
+    if (!name.trim()) return notify('Name is required');
     const err = validateCode(format, code.trim());
-    if (err) return alert(`Invalid code: ${err}`);
+    if (err) return notify(`Invalid code: ${err}`);
     const domain = toDomain(website);
-    if (website.trim() && !domain) return alert('Store website should look like tesco.cz');
-    if (kind === 'ticket' && !expires) return alert('Pick an expiry date');
-    if (kind === 'coupon' && !until) return alert('Pick the last valid day');
-    if (kind === 'coupon' && from && from > until) return alert('"Valid from" must not be after "Valid until"');
+    if (website.trim() && !domain) return notify('Store website should look like tesco.cz');
+    if (kind === 'ticket' && !expires) return notify('Pick an expiry date');
+    if (kind === 'coupon' && !until) return notify('Pick the last valid day');
+    if (kind === 'coupon' && from && from > until) return notify('"Valid from" must not be after "Valid until"');
     const expiresAt = kind === 'ticket' ? new Date(expires).getTime() : kind === 'coupon' ? dayEnd(until) : null;
     const validFrom = kind === 'coupon' && from ? dayStart(from) : null;
-    if (expiresAt != null && expiresAt < Date.now() && !confirm('Already expired. Save anyway?')) return;
+    if (expiresAt != null && expiresAt < Date.now() && !(await ask('Already expired. Save anyway?', 'Save anyway'))) return;
+    if (saving.current) return;
     saving.current = true;
     const fields = {
       kind, name: name.trim(), note: note.trim() || null, code: code.trim(), format,
@@ -123,7 +129,7 @@ export default function Add({ kind: initialKind, shared, editId }: { kind: Kind;
       else insertItem({ ...fields, color: null, notify_id: null, created_at: Date.now() });
     } catch (e) {
       saving.current = false;
-      return alert('Could not save: ' + String(e));
+      return notify('Could not save: ' + String(e));
     }
     if (editing) go(`/item/${editing.id}`); else go(`/${kind}s`);
   };
@@ -133,7 +139,8 @@ export default function Add({ kind: initialKind, shared, editId }: { kind: Kind;
   }
 
   const badge = (f: Field) => filled[f] && <span className="badge">{filled[f]}</span>;
-  const cls = (f: Field) => 'input' + (filled[f] ? ' filled' : '');
+  const vals: Record<Field, string> = { name, website, code, from, until };
+  const cls = (f: Field) => 'input' + (filled[f] ? ' filled' : '') + (reading && f !== 'code' && !vals[f] ? ' waiting' : ''); // shimmer the empty fields OCR may fill
 
   return (
     <div className="screen">
@@ -148,7 +155,12 @@ export default function Add({ kind: initialKind, shared, editId }: { kind: Kind;
           ))}
         </div>
 
-        {ocrNote && <p className="banner" role="status">{ocrNote}</p>}
+        {ocrNote && (
+          <p className={'banner' + (reading ? ' busy' : '')} role="status">
+            {ocrNote}
+            {reading && <span className="slow">Still working — the first read is the slowest. You can keep typing.</span>}
+          </p>
+        )}
 
         <label className="field">
           <span className="field-label">Store name {badge('name')}</span>
@@ -166,7 +178,7 @@ export default function Add({ kind: initialKind, shared, editId }: { kind: Kind;
         <div className="two">
           <button className="secondary" onClick={() => setScanning(true)}><Icon name="scan" size={20} />Scan code</button>
           <label className="secondary">
-            <Icon name="image" size={20} />From image
+            {reading ? <span className="spinner" aria-hidden /> : <Icon name="image" size={20} />}From image
             <input type="file" accept="image/*" className="sr-only" onChange={(e) => { const f = e.target.files?.[0]; if (f) importBlob(f); e.target.value = ''; }} />
           </label>
         </div>

@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { notify } from './Dialog';
 import { detect } from './detect';
 import type { Format } from './logic';
 
@@ -23,7 +24,7 @@ export default function Scanner({ onResult, onCancel }: Props) {
         await video.current!.play();
         tick();
       })
-      .catch(() => { if (!done) { alert('Camera unavailable. Enter the code manually.'); onCancel(); } });
+      .catch(() => { if (!done) { onCancel(); notify('Camera unavailable. Enter the code manually.'); } });
     return () => { done = true; clearTimeout(timer); stream?.getTracks().forEach((t) => t.stop()); };
   }, []);
   return (

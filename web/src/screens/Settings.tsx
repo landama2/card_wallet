@@ -6,14 +6,17 @@ import { go } from '../route';
 
 export default function Settings() {
   const [pending, setPending] = useState<NewItem[] | null>(null);
+  const [confirmReplace, setConfirmReplace] = useState(false);
+  const [status, setStatus] = useState('');
   const pick = async (file: File | undefined) => {
     if (!file) return;
+    setStatus(''); setConfirmReplace(false);
     try { setPending(parseImport(await file.text())); }
-    catch (e) { alert(`Import failed: ${String(e)}`); }
+    catch (e) { setPending(null); setStatus(`Import failed: ${String(e)}`); }
   };
   const run = (mode: 'merge' | 'replace') => {
-    if (mode === 'replace' && !confirm(`Replace all items with ${pending!.length} from backup?`)) return;
-    applyImport(pending!, mode); setPending(null); alert('Import complete');
+    applyImport(pending!, mode); setPending(null); setConfirmReplace(false);
+    setStatus(`Imported ${pending!.length} items.`);
   };
   return (
     <div className="screen">
@@ -34,14 +37,24 @@ export default function Settings() {
               <input type="file" accept=".json,application/json,text/plain,application/octet-stream" className="sr-only" onChange={(e) => { pick(e.target.files?.[0]); e.target.value = ''; }} />
             </label>
           </div>
+          {status && <p role="status">{status}</p>}
         </section>
         {pending && (
           <section className="panel" role="dialog" aria-label="Import backup">
-            <p>{pending.length} items found in the backup.</p>
+            <p>{confirmReplace ? `Delete all current items and replace them with the ${pending.length} from the backup?` : `${pending.length} items found in the backup.`}</p>
             <div className="row">
-              <button className="secondary" onClick={() => run('merge')}>Merge</button>
-              <button className="secondary danger-text" onClick={() => run('replace')}>Replace all</button>
-              <button className="secondary" onClick={() => setPending(null)}>Cancel</button>
+              {confirmReplace ? (
+                <>
+                  <button className="secondary danger-text" onClick={() => run('replace')}>Yes, replace</button>
+                  <button className="secondary" onClick={() => setConfirmReplace(false)}>Back</button>
+                </>
+              ) : (
+                <>
+                  <button className="secondary" onClick={() => run('merge')}>Merge</button>
+                  <button className="secondary danger-text" onClick={() => setConfirmReplace(true)}>Replace all</button>
+                  <button className="secondary" onClick={() => setPending(null)}>Cancel</button>
+                </>
+              )}
             </div>
           </section>
         )}
