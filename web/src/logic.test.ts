@@ -74,6 +74,7 @@ test('validateCode checks digits and check digit', () => {
   assert.equal(validateCode('ean13', '4006381333931'), null);
   assert.match(validateCode('ean13', '4006381333932')!, /Check digit/);
   assert.match(validateCode('ean13', '123')!, /13 digits/);
+  assert.match(validateCode('ean13', '123')!, /^EAN-13 needs/);
   assert.equal(validateCode('ean8', '96385074'), null);
   assert.equal(validateCode('upc_a', '036000291452'), null);
   assert.equal(validateCode('qr', 'anything'), null);

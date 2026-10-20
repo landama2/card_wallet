@@ -105,7 +105,7 @@ export function validateCode(format: Format, code: string): string | null {
   if (!code) return 'Code is empty';
   const n = DIGITS[format];
   if (n) {
-    if (!new RegExp(`^\\d{${n}}$`).test(code)) return `${format} needs exactly ${n} digits`;
+    if (!new RegExp(`^\\d{${n}}$`).test(code)) return `${FORMAT_LABEL[format]} needs exactly ${n} digits`;
     if (!checkDigitOk(code)) return 'Check digit is wrong';
   }
   return null;

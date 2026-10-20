@@ -20,10 +20,10 @@ const toDateTimeInput = (t: number) => {
 };
 
 // Add a new item, or edit one when `editId` is given (same form, prefilled).
-export default function Add({ kind: initialKind, shared, editId, scanning }: { kind: Kind; shared: boolean; editId?: number; scanning: boolean }) {
+export default function Add({ kind: initialKind, shared, editId, scanning, initialName = '' }: { kind: Kind; shared: boolean; editId?: number; scanning: boolean; initialName?: string }) {
   const editing = editId != null ? getItem(editId) : null;
   const [kind, setKind] = useState<Kind>(editing?.kind ?? initialKind);
-  const [name, setName] = useState(editing?.name ?? '');
+  const [name, setName] = useState(editing?.name ?? initialName);
   const [note, setNote] = useState(editing?.note ?? '');
   const [code, setCode] = useState(editing?.code ?? '');
   const [format, setFormat] = useState<Format>(editing?.format ?? 'qr');
@@ -32,6 +32,7 @@ export default function Add({ kind: initialKind, shared, editId, scanning }: { k
   const [until, setUntil] = useState(editing?.kind === 'coupon' && editing.expires_at ? toDateInput(editing.expires_at) : '');
   const [website, setWebsite] = useState(editing?.domain ?? '');
   const [filled, setFilled] = useState<Partial<Record<Field, string>>>({}); // field -> badge text
+  const [errors, setErrors] = useState<Record<string, string>>({}); // field -> message, shown under the field
   const [ocrNote, setOcrNote] = useState('');
   const [reading, setReading] = useState(false);
   const saving = useRef(false);
@@ -49,6 +50,7 @@ export default function Add({ kind: initialKind, shared, editId, scanning }: { k
   const typed = (field: Field, set: (v: string) => void) => (v: string) => {
     set(v);
     setFilled(({ [field]: _gone, ...rest }) => rest);
+    setErrors(({ [field]: _gone, ...rest }) => rest);
   };
 
   const fill = (r: { code: string; format: Format } | null, source: string) => {
@@ -113,14 +115,19 @@ export default function Add({ kind: initialKind, shared, editId, scanning }: { k
 
   const save = async () => {
     if (saving.current) return;
-    if (!name.trim()) return notify('Name is required');
-    const err = validateCode(format, code.trim());
-    if (err) return notify(`Invalid code: ${err}`);
+    // Collected in form order, shown under each field; focus goes to the first one.
+    const e: Record<string, string> = {};
+    if (!name.trim()) e.name = 'Enter the store name';
     const domain = toDomain(website);
-    if (website.trim() && !domain) return notify('Store website should look like tesco.cz');
-    if (kind === 'ticket' && !expires) return notify('Pick an expiry date');
-    if (kind === 'coupon' && !until) return notify('Pick the last valid day');
-    if (kind === 'coupon' && from && from > until) return notify('"Valid from" must not be after "Valid until"');
+    if (website.trim() && !domain) e.website = 'Should look like tesco.cz';
+    const codeErr = validateCode(format, code.trim());
+    if (codeErr) e.code = codeErr;
+    if (kind === 'ticket' && !expires) e.expires = 'Pick when it expires';
+    if (kind === 'coupon' && !until) e.until = 'Pick the last valid day';
+    else if (kind === 'coupon' && from && from > until) e.until = 'Must not be before "Valid from"';
+    setErrors(e);
+    const first = Object.keys(e)[0];
+    if (first) { document.getElementById(`f-${first}`)?.focus(); return; }
     const expiresAt = kind === 'ticket' ? new Date(expires).getTime() : kind === 'coupon' ? dayEnd(until) : null;
     const validFrom = kind === 'coupon' && from ? dayStart(from) : null;
     if (expiresAt != null && expiresAt < Date.now() && !(await ask('Already expired. Save anyway?', 'Save anyway'))) return;
@@ -150,6 +157,8 @@ export default function Add({ kind: initialKind, shared, editId, scanning }: { k
     );
   }
 
+  const errProps = (f: string) => ({ id: `f-${f}`, ...(errors[f] ? { 'aria-invalid': true, 'aria-describedby': `e-${f}` } : {}) });
+  const errText = (f: string) => errors[f] && <span id={`e-${f}`} className="field-error">{errors[f]}</span>;
   const badge = (f: Field) => filled[f] && <span className="badge">{filled[f]}</span>;
   const vals: Record<Field, string> = { name, website, code, from, until };
   const cls = (f: Field) => 'input' + (filled[f] ? ' filled' : '') + (reading && f !== 'code' && !vals[f] ? ' waiting' : ''); // shimmer the empty fields OCR may fill
@@ -178,13 +187,15 @@ export default function Add({ kind: initialKind, shared, editId, scanning }: { k
           <span className="field-label">Store name {badge('name')}</span>
           <span className="with-logo">
             <Logo name={name || '?'} domain={toDomain(website)} size={52} />
-            <input className={cls('name')} value={name} onChange={(e) => typed('name', setName)(e.target.value)} placeholder="e.g. Albert" />
+            <input {...errProps('name')} className={cls('name')} value={name} onChange={(e) => typed('name', setName)(e.target.value)} placeholder="e.g. Albert" />
           </span>
+          {errText('name')}
         </label>
 
         <label className="field">
           <span className="field-label">Store website, for the logo {badge('website')}</span>
-          <input className={cls('website')} value={website} onChange={(e) => typed('website', setWebsite)(e.target.value)} placeholder="e.g. albert.cz (optional)" inputMode="url" autoCapitalize="none" />
+          <input {...errProps('website')} className={cls('website')} value={website} onChange={(e) => typed('website', setWebsite)(e.target.value)} placeholder="e.g. albert.cz (optional)" inputMode="url" autoCapitalize="none" />
+          {errText('website')}
         </label>
 
         <div className="two">
@@ -197,7 +208,8 @@ export default function Add({ kind: initialKind, shared, editId, scanning }: { k
 
         <label className="field">
           <span className="field-label">Code {badge('code')}</span>
-          <input ref={codeInput} className={cls('code')} value={code} onChange={(e) => { typed('code', setCode)(e.target.value); if (!formatTouched.current) setFormat(guessFormat(e.target.value)); }} placeholder="Scan, import or type the number" autoCapitalize="none" />
+          <input ref={codeInput} {...errProps('code')} className={cls('code')} value={code} onChange={(e) => { typed('code', setCode)(e.target.value); if (!formatTouched.current) setFormat(guessFormat(e.target.value)); }} placeholder="Scan, import or type the number" autoCapitalize="none" />
+          {errText('code')}
         </label>
         <div className="pills" role="group" aria-label="Code type">
           {FORMATS.map((f) => (
@@ -208,7 +220,8 @@ export default function Add({ kind: initialKind, shared, editId, scanning }: { k
         {kind === 'ticket' && (
           <label className="field">
             <span className="field-label">Expires</span>
-            <input className="input" type="datetime-local" value={expires} onChange={(e) => setExpires(e.target.value)} />
+            <input {...errProps('expires')} className="input" type="datetime-local" value={expires} onChange={(e) => { setExpires(e.target.value); setErrors(({ expires: _gone, ...rest }) => rest); }} />
+            {errText('expires')}
           </label>
         )}
         {kind === 'coupon' && (
@@ -219,7 +232,8 @@ export default function Add({ kind: initialKind, shared, editId, scanning }: { k
             </label>
             <label className="field">
               <span className="field-label">Valid until {badge('until')}</span>
-              <input className={cls('until')} type="date" value={until} min={from || undefined} onChange={(e) => typed('until', setUntil)(e.target.value)} />
+              <input {...errProps('until')} className={cls('until')} type="date" value={until} min={from || undefined} onChange={(e) => typed('until', setUntil)(e.target.value)} />
+              {errText('until')}
             </label>
           </div>
         )}

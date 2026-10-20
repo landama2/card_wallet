@@ -11,7 +11,7 @@ const TAB: Record<Kind, { label: string; icon: IconName }> = {
   card: { label: 'Cards', icon: 'card' }, ticket: { label: 'Tickets', icon: 'ticket' }, coupon: { label: 'Coupons', icon: 'coupon' },
 };
 const EMPTY: Record<Kind, string> = {
-  card: 'No cards yet. Tap + to scan or import your first loyalty card.',
+  card: 'No cards yet. Tap + to scan a card or add it from a photo.',
   ticket: 'No tickets. Tap + to add one; it moves to the archive when it expires.',
   coupon: 'No coupons. Tap + and import a screenshot: the store and dates are filled in for you.',
 };
@@ -51,7 +51,8 @@ export default function Lists({ tab }: { tab: Kind }) {
   const valid = live.filter((i) => !isUpcoming(i, now)).sort(byExpiry);
   const upcoming = live.filter((i) => isUpcoming(i, now)).sort((a, b) => a.valid_from! - b.valid_from!);
   const archive = items.filter((i) => isArchived(i, now)).sort((a, b) => (b.expires_at ?? 0) - (a.expires_at ?? 0));
-  const cards = items.filter((i) => i.name.toLowerCase().includes(q.trim().toLowerCase())).sort(byRecent);
+  const needle = q.trim().toLowerCase();
+  const cards = items.filter((i) => [i.name, i.note ?? '', i.code].some((s) => s.toLowerCase().includes(needle))).sort(byRecent);
   return (
     <div className="screen">
       <header className="topbar">
@@ -78,6 +79,12 @@ export default function Lists({ tab }: { tab: Kind }) {
             </label>
             <h2 className="section-label">Loyalty cards · {cards.length}</h2>
             <div className="tiles">{cards.map((i) => <Tile key={i.id} item={i} />)}</div>
+            {cards.length === 0 && needle && (
+              <div className="empty">
+                <p>No card matches “{q.trim()}”.</p>
+                <button className="secondary" onClick={() => go(`/add?kind=card&name=${encodeURIComponent(q.trim())}`)}>Add “{q.trim()}”</button>
+              </div>
+            )}
           </>
         )}
         {tab !== 'card' && items.length > 0 && (
