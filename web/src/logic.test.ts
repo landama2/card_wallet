@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { type Item, statusChip, storeHue, FORMAT_LABEL, FORMATS, toDomain, logoUrl, initialOf, isArchived, isUpcoming, dayStart, dayEnd, toDateInput, validateCode, guessFormat, reminderTime, serialize, parseImport, dedupe, fromDetector } from './logic';
+import { type Item, statusChip, storeHue, FORMAT_LABEL, FORMATS, toDomain, logoUrl, initialOf, isArchived, isUpcoming, dayStart, dayEnd, toDateInput, validateCode, guessFormat, reminderTime, serialize, parseImport, dedupe, fromDetector, byRecent } from './logic';
 
 const base: Item = { id: 1, kind: 'ticket', name: 'Concert', code: 'ABC', format: 'qr', color: null, note: null, expires_at: 1000, valid_from: null, domain: null, notify_id: 'n1', created_at: 1 };
 
@@ -129,4 +129,11 @@ test('import keeps an item whose code does not fit its format, as Code 128', () 
   assert.equal(bad.format, 'code128');
   const [good] = parseImport('{"version":1,"items":[{"kind":"card","name":"A","code":"4006381333931","format":"ean13"}]}');
   assert.equal(good.format, 'ean13');
+});
+
+test('cards sort by last use, then A–Z; last use survives a backup', () => {
+  const c = (name: string, last_used_at?: number): Item => ({ ...base, kind: 'card', name, last_used_at });
+  assert.deepEqual([c('B'), c('A'), c('Old', 5), c('New', 9)].sort(byRecent).map((i) => i.name), ['New', 'Old', 'A', 'B']);
+  assert.equal(parseImport(serialize([{ ...base, last_used_at: 7 }]))[0].last_used_at, 7);
+  assert.equal(parseImport('{"version":1,"items":[{"kind":"card","name":"A","code":"1","format":"qr"}]}')[0].last_used_at, null);
 });

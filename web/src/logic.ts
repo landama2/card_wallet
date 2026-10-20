@@ -20,6 +20,7 @@ export type Item = {
   id: number; kind: Kind; name: string; code: string; format: Format;
   color: string | null; note: string | null; expires_at: number | null; valid_from: number | null;
   domain: string | null; // store website, e.g. 'tesco.cz'; drives the logo. Missing in items saved before logos.
+  last_used_at?: number | null; // when its detail screen was last opened; missing in items saved before this
   notify_id: string | null; created_at: number;
 };
 
@@ -39,6 +40,10 @@ export const isArchived = (i: Item, now = Date.now()) =>
   i.kind !== 'card' && i.expires_at != null && i.expires_at < now;
 
 export const isUpcoming = (i: Item, now = Date.now()) => i.valid_from != null && now < i.valid_from;
+
+// Cards: most recently opened first; never-opened cards after them, A–Z.
+export const byRecent = (a: Item, b: Item) =>
+  (b.last_used_at ?? 0) - (a.last_used_at ?? 0) || a.name.localeCompare(b.name);
 
 // '2026-10-20' (an <input type="date"> value) <-> local day boundaries.
 const ymd = (s: string) => s.split('-').map(Number) as [number, number, number];
@@ -139,7 +144,9 @@ export function parseImport(json: string): NewItem[] {
       color: x.color ?? null, note: x.note ?? null,
       expires_at: typeof x.expires_at === 'number' ? x.expires_at : null,
       valid_from: typeof x.valid_from === 'number' ? x.valid_from : null,
-      domain: typeof x.domain === 'string' ? toDomain(x.domain) : null, notify_id: null, created_at: x.created_at ?? Date.now(),
+      domain: typeof x.domain === 'string' ? toDomain(x.domain) : null,
+      last_used_at: typeof x.last_used_at === 'number' ? x.last_used_at : null,
+      notify_id: null, created_at: x.created_at ?? Date.now(),
     };
   });
 }

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import Icon, { type IconName } from '../Icon';
 import Logo, { tileColor } from '../Logo';
 import { listItems } from '../db';
-import { type Item, type Kind, KINDS, isArchived, isUpcoming, statusChip } from '../logic';
+import { type Item, type Kind, KINDS, byRecent, isArchived, isUpcoming, statusChip } from '../logic';
 import { go } from '../route';
 
 const TITLE: Record<Kind, string> = { card: 'Wallet', ticket: 'Tickets', coupon: 'Coupons' };
@@ -48,7 +48,7 @@ export default function Lists({ tab }: { tab: Kind }) {
   const valid = live.filter((i) => !isUpcoming(i, now)).sort(byExpiry);
   const upcoming = live.filter((i) => isUpcoming(i, now)).sort((a, b) => a.valid_from! - b.valid_from!);
   const archive = items.filter((i) => isArchived(i, now)).sort((a, b) => (b.expires_at ?? 0) - (a.expires_at ?? 0));
-  const cards = items.filter((i) => i.name.toLowerCase().includes(q.trim().toLowerCase()));
+  const cards = items.filter((i) => i.name.toLowerCase().includes(q.trim().toLowerCase())).sort(byRecent);
   return (
     <div className="screen">
       <header className="topbar">

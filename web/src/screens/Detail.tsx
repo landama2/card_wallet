@@ -26,6 +26,8 @@ export default function Detail({ id, till }: { id: number; till: boolean }) {
     return () => { gone = true; document.removeEventListener('visibilitychange', acquire); lock?.release(); };
   }, []);
 
+  useEffect(() => { updateItem(id, { last_used_at: Date.now() }); }, [id]); // puts this card first on the list
+
   // The phone's status bar takes the store colour too, while this screen is open.
   useEffect(() => {
     const meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
