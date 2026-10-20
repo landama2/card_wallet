@@ -6,14 +6,16 @@ import { listItems } from '../db';
 import { type Item, type Kind, KINDS, backupDue, byRecent, daysAgo, isArchived, isUpcoming, statusChip } from '../logic';
 import { go } from '../route';
 
-const TITLE: Record<Kind, string> = { card: 'Wallet', ticket: 'Tickets', coupon: 'Coupons' };
+const TITLE: Record<Kind, string> = { card: 'Wallet', ticket: 'Tickets', coupon: 'Coupons', receipt: 'Receipts' };
 const TAB: Record<Kind, { label: string; icon: IconName }> = {
   card: { label: 'Cards', icon: 'card' }, ticket: { label: 'Tickets', icon: 'ticket' }, coupon: { label: 'Coupons', icon: 'coupon' },
+  receipt: { label: 'Receipts', icon: 'receipt' },
 };
 const EMPTY: Record<Kind, string> = {
   card: 'No cards yet. Tap + to scan a card or add it from a photo.',
   ticket: 'No tickets. Tap + to add one; it moves to the archive when it expires.',
   coupon: 'No coupons. Tap + and import a screenshot: the store and dates are filled in for you.',
+  receipt: 'No receipts. Tap + and take a photo: the date and amount are filled in for you.',
 };
 
 function Tile({ item }: { item: Item }) {

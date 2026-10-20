@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { type Item, statusChip, storeHue, FORMAT_LABEL, FORMATS, toDomain, logoUrl, initialOf, isArchived, isUpcoming, dayStart, dayEnd, toDateInput, validateCode, guessFormat, reminderTime, serialize, parseImport, dedupe, fromDetector, byRecent, backupDue, daysAgo, validityLabel } from './logic';
+import { type Item, statusChip, storeHue, FORMAT_LABEL, FORMATS, toDomain, logoUrl, initialOf, isArchived, isUpcoming, dayStart, dayEnd, toDateInput, validateCode, guessFormat, reminderTime, serialize, parseImport, dedupe, fromDetector, byRecent, backupDue, daysAgo, validityLabel, formatAmount, parseAmount, receiptFacts } from './logic';
 
 const base: Item = { id: 1, kind: 'ticket', name: 'Concert', code: 'ABC', format: 'qr', color: null, note: null, expires_at: 1000, valid_from: null, domain: null, notify_id: 'n1', created_at: 1 };
 
@@ -155,4 +155,63 @@ test('ticket chip shows only the time when it ends today; labels have no seconds
   const now = at(2026, 10, 19, 10);
   assert.deepEqual(statusChip({ ...base, expires_at: at(2026, 10, 19, 20) }, now, fmt, fmt, () => '20:00'), { text: 'Ends today, 20:00', tone: 'soon' });
   assert.doesNotMatch(validityLabel({ ...base, expires_at: at(2026, 10, 20, 15, 40, 54) })!, /54/);
+});
+
+test('receipts may have no code; other kinds may not', () => {
+  assert.equal(validateCode('qr', '', 'receipt'), null);
+  assert.equal(validateCode('qr', ''), 'Code is empty');
+  assert.equal(validateCode('qr', '', 'card'), 'Code is empty');
+});
+
+test('parseImport accepts a receipt without a code and keeps amount and purchase date', () => {
+  const json = JSON.stringify({ version: 1, items: [{ kind: 'receipt', name: 'Dr. Max', code: '', format: 'qr', amount: 389.5, purchased_at: 5, expires_at: 9 }] });
+  const [r] = parseImport(json);
+  assert.equal(r.kind, 'receipt');
+  assert.equal(r.code, '');
+  assert.equal(r.format, 'qr'); // not forced to code128
+  assert.equal(r.amount, 389.5);
+  assert.equal(r.purchased_at, 5);
+  assert.equal(r.expires_at, 9);
+});
+
+test('a card without a code still imports as Code 128, as before receipts', () => {
+  const json = JSON.stringify({ version: 1, items: [{ kind: 'card', name: 'X', code: '', format: 'qr' }] });
+  assert.equal(parseImport(json)[0].format, 'code128'); // empty code breaks qr rules -> code128 fallback, as before
+});
+
+test('parseAmount reads Czech and English styles; rejects junk', () => {
+  assert.equal(parseAmount('1 250,50'), 1250.5);
+  assert.equal(parseAmount('1250.5 Kč'), 1250.5);
+  assert.equal(parseAmount(' 389 '), 389);
+  assert.equal(parseAmount('12,345'), null);
+  assert.equal(parseAmount('abc'), null);
+  assert.equal(parseAmount(''), null);
+});
+
+test('formatAmount uses Czech grouping and Kč', () => {
+  assert.equal(formatAmount(1250).replace(/\s/g, ' '), '1 250 Kč');
+  assert.equal(formatAmount(389.5).replace(/\s/g, ' '), '389,50 Kč');
+});
+
+test('receipts: deadline label and facts line', () => {
+  const r = { ...base, kind: 'receipt' as const, code: '', expires_at: new Date(2026, 11, 31, 23, 59).getTime(), amount: 1250, purchased_at: new Date(2026, 9, 3).getTime() };
+  assert.match(validityLabel(r)!, /^Claim by /);
+  assert.match(receiptFacts(r)!.replace(/\s/g, ' '), /^1 250 Kč · Bought /);
+  assert.equal(receiptFacts({ ...base }), null);
+});
+
+test('dedupe tells apart receipts that differ only in amount or date', () => {
+  const r = { ...base, kind: 'receipt' as const, code: '', name: 'Dr. Max', amount: 100, purchased_at: 1 };
+  const { id: _id, ...n } = r;
+  assert.equal(dedupe([r], [n]).length, 0);
+  assert.equal(dedupe([r], [{ ...n, amount: 200 }]).length, 1);
+  assert.equal(dedupe([r], [{ ...n, purchased_at: 2 }]).length, 1);
+  assert.equal(dedupe([{ ...base }], [{ ...base, id: undefined } as any]).length, 0); // old items without the fields still dedupe
+});
+
+test('serialize adds a photo path only where given', () => {
+  const out = JSON.parse(serialize([base, { ...base, id: 2 }], (i, n) => (i.id === 2 ? `photos/${n}.jpg` : undefined)));
+  assert.equal(out.items[0].photo, undefined);
+  assert.equal(out.items[1].photo, 'photos/1.jpg');
+  assert.equal(JSON.parse(serialize([base])).items[0].photo, undefined);
 });

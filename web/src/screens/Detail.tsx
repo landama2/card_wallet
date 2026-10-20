@@ -7,7 +7,7 @@ import { deleteItem, getItem, restoreItem, updateItem } from '../db';
 import { FORMAT_LABEL, LINEAR, statusChip, toDomain, validityLabel } from '../logic';
 import { closeOverlay, go, openOverlay } from '../route';
 
-const KIND_LABEL = { card: 'Loyalty card', ticket: 'Ticket', coupon: 'Coupon' } as const;
+const KIND_LABEL = { card: 'Loyalty card', ticket: 'Ticket', coupon: 'Coupon', receipt: 'Receipt' } as const;
 
 export default function Detail({ id, till }: { id: number; till: boolean }) {
   const [rev, setRev] = useState(0); // bumped after an edit so the item is re-read from storage

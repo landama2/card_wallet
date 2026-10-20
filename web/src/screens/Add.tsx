@@ -11,7 +11,7 @@ import { readLines } from '../ocr';
 import { guessFromText } from '../ocr-parse';
 import { closeOverlay, go, openOverlay } from '../route';
 
-const KIND_LABEL: Record<Kind, string> = { card: 'Card', ticket: 'Ticket', coupon: 'Coupon' };
+const KIND_LABEL: Record<Kind, string> = { card: 'Card', ticket: 'Ticket', coupon: 'Coupon', receipt: 'Receipt' };
 type Field = 'name' | 'website' | 'code' | 'from' | 'until';
 
 // datetime-local value (local time) for an epoch time.
