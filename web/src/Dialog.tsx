@@ -4,6 +4,11 @@ import { useEffect, useRef, useState } from 'react';
 type Req = { message: string; ok: string; cancel: boolean; danger: boolean; input: string | null; done: (v: string | boolean | null) => void };
 let show: ((r: Req) => void) | null = null;
 
+type Toast = { message: string; action: string; run: () => void };
+let showToast: ((t: Toast | null) => void) | null = null;
+/** A short message with one action (e.g. Undo) above the tab bar; goes away after 6 s. */
+export const toast = (message: string, action: string, run: () => void) => showToast?.({ message, action, run });
+
 const open = (r: Omit<Req, 'done'>) => new Promise<string | boolean | null>((done) => show!({ ...r, done }));
 
 export const notify = (message: string) =>
@@ -18,28 +23,41 @@ export function DialogHost() {
   const [queue, setQueue] = useState<Req[]>([]);
   const [text, setText] = useState('');
   const field = useRef<HTMLInputElement>(null);
+  const [t, setT] = useState<Toast | null>(null);
+  useEffect(() => { showToast = setT; return () => { showToast = null; }; }, []);
+  useEffect(() => { if (!t) return; const h = setTimeout(() => setT(null), 6000); return () => clearTimeout(h); }, [t]);
   useEffect(() => { show = (r) => setQueue((q) => [...q, r]); return () => { show = null; }; }, []);
   const req = queue[0];
   useEffect(() => { setText(req?.input ?? ''); if (req?.input != null) field.current?.focus(); }, [req]);
-  if (!req) return null;
+  const toastEl = t && (
+    <div className="toast" role="status">
+      <span>{t.message}</span>
+      <button onClick={() => { setT(null); t.run(); }}>{t.action}</button>
+    </div>
+  );
+  if (!req) return toastEl;
   const close = (v: string | boolean | null) => { req.done(v); setQueue((q) => q.slice(1)); };
   const cancel = () => close(req.input != null ? null : false);
   const ok = () => close(req.input != null ? text : true);
   return (
-    <div className="dialog-backdrop" onClick={req.cancel ? cancel : undefined}>
-      <form
-        className="dialog" role="alertdialog" aria-modal="true" aria-label={req.message}
-        onClick={(e) => e.stopPropagation()}
-        onSubmit={(e) => { e.preventDefault(); ok(); }}
-        onKeyDown={(e) => { if (e.key === 'Escape') cancel(); }}
-      >
-        <p>{req.message}</p>
-        {req.input != null && <input ref={field} value={text} onChange={(e) => setText(e.target.value)} autoCapitalize="none" autoCorrect="off" />}
-        <div className="actions">
-          {req.cancel && <button type="button" className="secondary" onClick={cancel}>Cancel</button>}
-          <button type="submit" autoFocus={req.input == null} className={`secondary strong${req.danger ? ' danger-text' : ''}`}>{req.ok}</button>
-        </div>
-      </form>
-    </div>
+    <>
+      {toastEl}
+      <div className="dialog-backdrop" onClick={req.cancel ? cancel : undefined}>
+        <form
+          className="dialog" role="alertdialog" aria-modal="true" aria-label={req.message}
+          onClick={(e) => e.stopPropagation()}
+          onSubmit={(e) => { e.preventDefault(); ok(); }}
+          onKeyDown={(e) => { if (e.key === 'Escape') cancel(); }}
+        >
+          <p>{req.message}</p>
+          {req.input != null && <input ref={field} value={text} onChange={(e) => setText(e.target.value)} autoCapitalize="none" autoCorrect="off" />}
+          <div className="actions">
+            {/* A destructive dialog focuses Cancel, so Enter can't confirm it by accident. */}
+            {req.cancel && <button type="button" className="secondary" autoFocus={req.danger} onClick={cancel}>Cancel</button>}
+            <button type="submit" autoFocus={req.input == null && !req.danger} className={`secondary strong${req.danger ? ' danger-text' : ''}`}>{req.ok}</button>
+          </div>
+        </form>
+      </div>
+    </>
   );
 }

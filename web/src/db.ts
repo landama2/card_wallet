@@ -25,3 +25,6 @@ export function insertMany(ns: NewItem[], replace: boolean) {
   let id = Math.max(0, ...items.map((i) => i.id));
   save([...ns.map((n) => ({ ...n, id: ++id })), ...items]);
 }
+
+// Put a deleted item back with its old id (Undo after Delete).
+export const restoreItem = (item: Item) => save([item, ...listItems()]);

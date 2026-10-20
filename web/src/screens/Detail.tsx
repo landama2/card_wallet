@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import CodeView from '../CodeView';
-import { ask, askText, notify } from '../Dialog';
+import { askText, notify, toast } from '../Dialog';
 import Icon from '../Icon';
 import Logo, { tileColor } from '../Logo';
-import { deleteItem, getItem, updateItem } from '../db';
+import { deleteItem, getItem, restoreItem, updateItem } from '../db';
 import { FORMAT_LABEL, LINEAR, statusChip, toDomain, validityLabel } from '../logic';
 import { closeOverlay, go, openOverlay } from '../route';
 
@@ -62,7 +62,11 @@ export default function Detail({ id, till }: { id: number; till: boolean }) {
   }
 
   const back = () => go(`/${item.kind}s`);
-  const remove = async () => { if (await ask(`Delete ${item.name}?`, 'Delete', true)) { deleteItem(item.id); back(); } };
+  const remove = () => {
+    deleteItem(item.id);
+    back();
+    toast(`Deleted ${item.name}`, 'Undo', () => { restoreItem(item); go(`/item/${item.id}`); });
+  };
   const setLogo = async () => {
     const input = await askText('Store website for the logo (e.g. tesco.cz). Leave empty to remove.', item.domain ?? '');
     if (input === null) return;

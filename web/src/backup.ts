@@ -24,7 +24,21 @@ export async function exportBackup(): Promise<boolean> {
   return saved();
 }
 
+// The wallet from before the last Replace, until it's restored or replaced again.
+const BEFORE = 'wallet.beforeReplace';
+export const savedBeforeReplace = (): NewItem[] | null => JSON.parse(localStorage.getItem(BEFORE) ?? 'null');
+export function restoreBeforeReplace() {
+  const items = savedBeforeReplace() ?? [];
+  insertMany(items, true);
+  localStorage.removeItem(BEFORE);
+  return items.length;
+}
+
 export function applyImport(items: NewItem[], mode: 'merge' | 'replace') {
+  if (mode === 'replace') {
+    const before = listItems().map(({ id, ...rest }) => rest);
+    if (before.length) localStorage.setItem(BEFORE, JSON.stringify(before));
+  }
   const added = mode === 'merge' ? dedupe(listItems(), items) : items;
   insertMany(added, mode === 'replace');
   return { added: added.length, skipped: items.length - added.length };

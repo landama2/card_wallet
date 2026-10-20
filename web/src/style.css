@@ -167,3 +167,6 @@ h1, h2 { font-family: var(--display); margin: 0; }
 .nag { display: flex; flex-direction: column; gap: 8px; }
 .nag-actions { display: flex; gap: 8px; align-items: center; }
 .nag .secondary { padding: 0 16px; }
+
+.toast { position: fixed; left: 16px; right: 16px; bottom: calc(var(--tabbar) + 16px); z-index: 90; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 6px 6px 6px 16px; border-radius: 14px; background: #14161a; color: #fff; font-size: 14px; box-shadow: 0 8px 24px rgba(20, 22, 26, 0.3); }
+.toast button { height: 44px; padding: 0 14px; border: none; border-radius: 10px; background: transparent; color: #9fb6ff; font-weight: 700; }
