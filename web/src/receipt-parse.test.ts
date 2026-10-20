@@ -9,6 +9,10 @@ test('Czech pharmacy receipt: "Celkem k úhradě" and a d.m.yyyy date', () => {
   assert.deepEqual(guessReceipt(lines, NOW), { amount: 1250.5, purchased: '2026-10-03' });
 });
 
+test('a total line that mentions the item count still counts', () => {
+  assert.equal(guessReceipt(['Celkem 2 položky 389,00'], NOW).amount, 389);
+});
+
 test('the last total line wins over a subtotal; spaced date with two-digit year', () => {
   const lines = ['Subtotal 300,00', 'TOTAL 389.00 CZK', 'Date 03. 10. 26'];
   assert.deepEqual(guessReceipt(lines, NOW), { amount: 389, purchased: '2026-10-03' });
