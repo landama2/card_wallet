@@ -28,13 +28,13 @@ export default function Detail({ id, till }: { id: number; till: boolean }) {
 
   useEffect(() => { updateItem(id, { last_used_at: Date.now() }); }, [id]); // puts this card first on the list
 
-  // The phone's status bar takes the store colour too, while this screen is open.
+  // The phone's status bar takes the store colour too, while this screen is open (both light and dark metas).
   useEffect(() => {
-    const meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
-    if (!meta || !color) return;
-    const before = meta.content;
-    meta.content = color;
-    return () => { meta.content = before; };
+    if (!color) return;
+    const metas = [...document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]')];
+    const before = metas.map((m) => m.content);
+    metas.forEach((m) => { m.content = color; });
+    return () => metas.forEach((m, i) => { m.content = before[i]; });
   }, [color]);
 
   // Esc closes till mode on desktop; on the phone it's Back or a tap.
