@@ -62,7 +62,7 @@ export function unzipBackup(b: Uint8Array): { items: NewItem[]; photos: (Uint8Ar
   const text = strFromU8(files['wallet.json']);
   const items = parseImport(text);
   const paths: unknown[] = JSON.parse(text).items.map((x: any) => x?.photo);
-  const photos = paths.map((p) => (typeof p === 'string' && files[p]?.length ? files[p] : null));
+  const photos = paths.map((p) => (typeof p === 'string' && Object.hasOwn(files, p) && files[p].length ? files[p] : null));
   return { items, photos, missing: paths.filter((p, i) => typeof p === 'string' && !photos[i]).length };
 }
 

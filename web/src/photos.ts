@@ -7,9 +7,10 @@ const open = () => new Promise<IDBDatabase>((ok, fail) => {
   r.onsuccess = () => ok(r.result);
   r.onerror = () => fail(r.error);
 });
+let asked = false; // storage.persist() is requested at most once per page load
 
 function run<T>(mode: IDBTransactionMode, f: (s: IDBObjectStore) => IDBRequest<T>): Promise<T> {
-  return (db ??= open()).then((d) => new Promise<T>((ok, fail) => {
+  return (db ??= open().catch((e) => { db = undefined; throw e; })).then((d) => new Promise<T>((ok, fail) => {
     const tx = d.transaction('photos', mode);
     const r = f(tx.objectStore('photos'));
     tx.oncomplete = () => ok(r.result);
@@ -24,7 +25,7 @@ export const clearPhotos = () => run('readwrite', (s) => s.clear()).then(() => {
 
 export function putPhoto(id: number, b: Blob) {
   // Without this, browsers may clear site data; iOS Safari does after 7 days unused unless the app is installed.
-  navigator.storage?.persisted?.().then((p) => p || navigator.storage.persist()).catch(() => {});
+  if (!asked) { asked = true; navigator.storage?.persisted?.().then((p) => p || navigator.storage.persist()).catch(() => {}); }
   return run('readwrite', (s) => s.put(b, id)).then(() => {});
 }
 

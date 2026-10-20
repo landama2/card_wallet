@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import CodeView from '../CodeView';
 import { ask, askText, notify, toast } from '../Dialog';
 import Icon from '../Icon';
@@ -15,6 +15,7 @@ export default function Detail({ id, till, photoOpen }: { id: number; till: bool
   const [photo, setPhoto] = useState<string | null>(null); // object URL of the stored photo
   const [showPhoto, setShowPhoto] = useState(false); // the "Original photo" row is collapsed until tapped
   const [zoomed, setZoomed] = useState(false);
+  const removing = useRef(false); // Delete awaits the photo read; a second tap must not run it again
   useEffect(() => {
     let url: string | undefined;
     let gone = false;
@@ -75,6 +76,8 @@ export default function Detail({ id, till, photoOpen }: { id: number; till: bool
 
   const back = () => go(`/${item.kind}s`);
   const remove = async () => {
+    if (removing.current) return;
+    removing.current = true;
     const blob = await getPhoto(item.id).catch(() => undefined); // held in memory for Undo
     deleteItem(item.id);
     deletePhoto(item.id).catch(() => {});

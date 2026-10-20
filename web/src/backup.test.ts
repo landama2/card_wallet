@@ -88,3 +88,11 @@ test('a photo named in wallet.json but absent from the zip is counted as missing
   assert.equal(r.photos[0], null);
   assert.equal(r.missing, 1);
 });
+
+test('a photo path naming an inherited key like "constructor" is treated as missing', async () => {
+  const { zipSync, strToU8 } = await import('fflate');
+  const json = JSON.stringify({ version: 1, items: [{ ...n('x'), photo: 'constructor' }] });
+  const r = unzipBackup(zipSync({ 'wallet.json': strToU8(json) }));
+  assert.equal(r.photos[0], null);
+  assert.equal(r.missing, 1);
+});
