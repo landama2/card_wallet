@@ -45,11 +45,11 @@ Status: approved 2026-10-20. Experimental feature.
   - Barcode detection still runs. If a code is found, it is filled in.
   - OCR tries to fill the purchase date and the amount, and never overwrites what the user typed (same rule as today).
   - The fields are: name (shop or provider), purchase date (`<input type="date">`), amount (`<input inputmode="decimal">`, accepts `,` or `.`), claim deadline (`<input type="date">`, end of that day), and note. The code and format fields sit in a collapsed "Barcode (optional)" section.
-  - A receipt needs only a name. A photo is recommended but not required.
+  - A receipt needs only a name. A photo is recommended but not required. The claim deadline must not be before the purchase date.
 - When editing, the photo is not shown here; it is managed from the Detail screen. Picking an image while editing with "Keep photo" on replaces the stored photo.
 
 ### OCR parsing (`receipt-parse.ts`, new; kept apart from the coupon parser in `ocr-parse.ts`)
-- **Amount:** the number on the line containing `Celkem`, `Celkem k úhradě`, `K úhradě`, `Total` or `Suma` (any case). A space may separate thousands, the decimal separator may be `,` or `.`, and a trailing `Kč`/`CZK` is allowed. If several lines match, the last one wins.
+- **Amount:** the last number on the last line containing `Celkem`, `K úhradě`, `Total` or `Suma` (any case). Lines that also mention `DPH`/`VAT`/`tax`/`subtotal`/`mezisoučet` are ignored, and so are item-count lines (`položek`, `položky`, `items`) whose number has no decimals. A space may separate thousands, the decimal separator may be `,` or `.`, and a trailing `Kč`/`CZK` is allowed.
 - **Purchase date:** the first date in `d.m.yyyy` or `d. m. yyyy` format (also `dd.mm.yy`) that is not in the future.
 
 ### Detail (`screens/Detail.tsx`)
@@ -75,7 +75,8 @@ Status: approved 2026-10-20. Experimental feature.
   - **Merge:** photos are written only for items that are actually added (those not removed as duplicates).
   - **Replace:** all stored photos are deleted, then the zip's photos are written.
   - **A JSON file:** stored photos are left as they are on Merge. On Replace they are cleared, since the items they belong to are gone.
-- The saved copy of the wallet from before a Replace keeps item text only, no photos. Restoring it brings back the items without photos.
+- The saved copy of the wallet from before a Replace keeps item text only, no photos. Restoring it first clears all stored photos (ids restart at 1, so a leftover photo would land on the wrong item), then brings back the items without photos.
+- Replace clears stored photos **before** touching the items; if clearing fails, nothing is imported. While an import or restore runs, the backup buttons are disabled and "Importing photos…" is shown.
 - `insertMany` must return the new ids (or the caller must work them out) so that each photo can be linked to its new item.
 
 ## 5. Errors
