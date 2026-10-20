@@ -22,6 +22,7 @@ Status: approved 2026-10-20. Experimental feature.
   - Receipts reuse `statusChip` and the archive logic of the other kinds. `isArchived` already applies to every kind except `card`, so a receipt moves to the archive once its deadline has passed.
   - The receipts list is sorted like tickets and coupons, soonest deadline first. Receipts without a deadline go after those with one, newest `purchased_at` first.
 - `code` may be empty, for receipts only. `validateCode` returns no error for an empty code on a receipt. `parseImport` accepts that case and doesn't force the format to `code128`.
+- Merge-import duplicate detection (`dedupe`) also compares `amount` and `purchased_at`. Without that, two receipts from the same shop with no code would count as duplicates.
 - No deadline notifications are sent. `notify_id` and `reminderTime` exist, but nothing sends a notification today.
 
 ## 2. Photo storage (`photos.ts`, new file)
@@ -45,16 +46,16 @@ Status: approved 2026-10-20. Experimental feature.
   - OCR tries to fill the purchase date and the amount, and never overwrites what the user typed (same rule as today).
   - The fields are: name (shop or provider), purchase date (`<input type="date">`), amount (`<input inputmode="decimal">`, accepts `,` or `.`), claim deadline (`<input type="date">`, end of that day), and note. The code and format fields sit in a collapsed "Barcode (optional)" section.
   - A receipt needs only a name. A photo is recommended but not required.
-- When editing, the photo is not shown here. It is managed from the Detail screen.
+- When editing, the photo is not shown here; it is managed from the Detail screen. Picking an image while editing with "Keep photo" on replaces the stored photo.
 
-### OCR parsing (`ocr-parse.ts`)
+### OCR parsing (`receipt-parse.ts`, new; kept apart from the coupon parser in `ocr-parse.ts`)
 - **Amount:** the number on the line containing `Celkem`, `Celkem k úhradě`, `K úhradě`, `Total` or `Suma` (any case). A space may separate thousands, the decimal separator may be `,` or `.`, and a trailing `Kč`/`CZK` is allowed. If several lines match, the last one wins.
 - **Purchase date:** the first date in `d.m.yyyy` or `d. m. yyyy` format (also `dd.mm.yy`) that is not in the future.
 
 ### Detail (`screens/Detail.tsx`)
 - A collapsed row reads **"Original photo"** (or **"Add photo"** when none is stored). Expanding it shows:
   - a thumbnail;
-  - **View**, which opens a full-screen overlay with pinch zoom. It uses the existing overlay and Back handling, so Back closes it;
+  - **View**, which opens a full-screen overlay. Tapping the image switches between fit-to-screen and full resolution with scrolling; tapping the backdrop, Back or Esc closes it. It uses the existing overlay and Back handling;
   - **Replace** (camera or gallery);
   - **Remove**, which asks for confirmation through the existing `ask` dialog.
 - A receipt **without a code** shows its photo thumbnail where the barcode card would be (tapping it opens the overlay), plus its amount, purchase date and deadline. A receipt with a code shows the barcode as usual.
@@ -62,7 +63,6 @@ Status: approved 2026-10-20. Experimental feature.
 ### Lists (`screens/Lists.tsx`)
 - A new "Receipts" tab, with an empty-state text and a FAB that adds a receipt.
 - Receipt rows show the name, the amount (e.g. `1 250 Kč`) and the deadline chip. Lists never show photos.
-- Search also matches the amount as typed.
 
 ## 4. Backups (`backup.ts`, `logic.ts`)
 
@@ -81,7 +81,7 @@ Status: approved 2026-10-20. Experimental feature.
 ## 5. Errors
 
 - If `putPhoto` fails (storage full, IndexedDB unavailable), the item is still saved and a `notify` message says "Saved, but the photo couldn't be kept."
-- If a photo is missing or unreadable on the Detail screen, the row shows "Photo not available" and offers Add photo.
+- If a photo is missing or unreadable on the Detail screen, it is treated as having no photo, and the row offers "Add photo".
 - If the zip can't be read or lacks `wallet.json`, import shows the same "not a wallet backup" error a bad JSON file gets. If a single photo is missing or corrupt inside an otherwise valid zip, that item is imported without its photo, and the result message counts the skipped photos.
 
 ## 6. Tests (`tsx --test`)
