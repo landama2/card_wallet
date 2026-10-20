@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { type Item, statusChip, storeHue, FORMAT_LABEL, FORMATS, toDomain, logoUrl, initialOf, isArchived, isUpcoming, dayStart, dayEnd, toDateInput, validateCode, guessFormat, reminderTime, serialize, parseImport, dedupe, fromDetector, byRecent, backupDue, daysAgo } from './logic';
+import { type Item, statusChip, storeHue, FORMAT_LABEL, FORMATS, toDomain, logoUrl, initialOf, isArchived, isUpcoming, dayStart, dayEnd, toDateInput, validateCode, guessFormat, reminderTime, serialize, parseImport, dedupe, fromDetector, byRecent, backupDue, daysAgo, validityLabel } from './logic';
 
 const base: Item = { id: 1, kind: 'ticket', name: 'Concert', code: 'ABC', format: 'qr', color: null, note: null, expires_at: 1000, valid_from: null, domain: null, notify_id: 'n1', created_at: 1 };
 
@@ -147,4 +147,11 @@ test('backup reminder: due with items and no export in 30 days, unless snoozed',
   assert.equal(backupDue(3, null, now + D, now), false);
   assert.equal(daysAgo(now, now, 'en'), 'today');
   assert.equal(daysAgo(now - 3 * D, now, 'en'), '3 days ago');
+});
+test('ticket chip shows only the time when it ends today; labels have no seconds', () => {
+  const at = (y: number, m: number, d: number, h = 12, min = 0, s = 0) => new Date(y, m - 1, d, h, min, s).getTime();
+  const fmt = (t: number) => toDateInput(t);
+  const now = at(2026, 10, 19, 10);
+  assert.deepEqual(statusChip({ ...base, expires_at: at(2026, 10, 19, 20) }, now, fmt, fmt, () => '20:00'), { text: 'Ends today, 20:00', tone: 'soon' });
+  assert.doesNotMatch(validityLabel({ ...base, expires_at: at(2026, 10, 20, 15, 40, 54) })!, /54/);
 });

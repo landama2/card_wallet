@@ -61,9 +61,10 @@ export const storeHue = (name: string) => [...name.trim().toLowerCase()].reduce(
 
 const shortDate = (t: number) => new Date(t).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
 const shortDateTime = (t: number) => new Date(t).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+const shortTime = (t: number) => new Date(t).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
 
 // The chip on list rows: how soon a ticket/coupon ends, or when it starts. Cards have none.
-export function statusChip(i: Item, now = Date.now(), date = shortDate, dateTime = shortDateTime):
+export function statusChip(i: Item, now = Date.now(), date = shortDate, dateTime = shortDateTime, time = shortTime):
   { text: string; tone: 'soon' | 'ok' | 'upcoming' | 'expired' } | null {
   if (i.kind === 'card' || i.expires_at == null) return null;
   const when = i.kind === 'ticket' ? dateTime : date;
@@ -71,7 +72,7 @@ export function statusChip(i: Item, now = Date.now(), date = shortDate, dateTime
   if (isArchived(i, now)) return { text: `Expired ${date(i.expires_at)}`, tone: 'expired' };
   const midnight = (t: number) => { const d = new Date(t); return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime(); };
   const days = Math.round((midnight(i.expires_at) - midnight(now)) / 86_400_000);
-  const suffix = i.kind === 'ticket' ? `, ${when(i.expires_at)}` : '';
+  const suffix = i.kind !== 'ticket' ? '' : `, ${days === 0 ? time(i.expires_at) : when(i.expires_at)}`;
   if (days === 0) return { text: `Ends today${suffix}`, tone: 'soon' };
   if (days === 1) return { text: `Ends tomorrow${suffix}`, tone: 'soon' };
   if (days <= 3) return { text: `Ends in ${days} days${suffix}`, tone: 'soon' };
@@ -81,9 +82,9 @@ export function statusChip(i: Item, now = Date.now(), date = shortDate, dateTime
 // Row/detail subtitle: ticket = date + time, coupon = date range (time of day is irrelevant).
 export function validityLabel(i: Item): string | null {
   if (i.expires_at == null) return null;
-  if (i.kind !== 'coupon') return new Date(i.expires_at).toLocaleString();
-  const until = new Date(i.expires_at).toLocaleDateString();
-  return i.valid_from == null ? `Valid until ${until}` : `Valid ${new Date(i.valid_from).toLocaleDateString()} – ${until}`;
+  if (i.kind !== 'coupon') return new Date(i.expires_at).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+  const day = (t: number) => new Date(t).toLocaleDateString(undefined, { dateStyle: 'medium' });
+  return i.valid_from == null ? `Valid until ${day(i.expires_at)}` : `Valid ${day(i.valid_from)} – ${day(i.expires_at)}`;
 }
 
 export const toDateInput = (t: number) => {

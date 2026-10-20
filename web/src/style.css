@@ -49,10 +49,13 @@ h1, h2 { font-family: var(--display); margin: 0; }
 /* Tickets / coupons: rows with a status chip */
 .row-card { display: flex; align-items: center; gap: 14px; padding: 14px; border: none; border-radius: 18px; background: var(--surface); text-align: left; box-shadow: var(--shadow); width: 100%; }
 .row-card.upcoming { background: transparent; border: 1.5px dashed #c9cdd6; box-shadow: none; }
-.row-card.dim { opacity: 0.6; }
+/* Expired: quieter card and a grey logo, but text keeps full contrast. */
+.row-card.dim { background: transparent; box-shadow: none; }
+.row-card.dim .logo { filter: grayscale(1); opacity: 0.6; }
 .row-card .text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
 .row-card .name { font-family: var(--display); font-size: 16px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .row-card .sub { font-size: 13px; color: var(--muted); }
+.row-card .chip { align-self: flex-start; }
 .logo { flex: none; display: inline-flex; align-items: center; justify-content: center; border-radius: 12px; object-fit: contain; background: #fff; color: #fff; font-family: var(--display); font-weight: 800; }
 .chip { padding: 6px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap; flex: none; }
 .chip.soon { background: #fff1e0; color: #8a3c00; }

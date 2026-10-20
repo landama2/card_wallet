@@ -32,9 +32,9 @@ function Row({ item, now, look }: { item: Item; now: number; look?: 'upcoming' |
       <Logo name={item.name} domain={item.domain ?? null} />
       <span className="text">
         <span className="name">{item.name}</span>
+        {chip && <span className={`chip ${chip.tone}`}>{chip.text}</span>}
         {item.note && <span className="sub">{item.note}</span>}
       </span>
-      {chip && <span className={`chip ${chip.tone}`}>{chip.text}</span>}
     </button>
   );
 }
