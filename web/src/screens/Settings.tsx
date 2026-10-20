@@ -27,10 +27,11 @@ export default function Settings() {
           <p>Your cards are stored only on this phone. Export a backup now and then, and keep it somewhere safe.</p>
           <div className="two">
             <button className="secondary" onClick={exportBackup}><Icon name="download" size={20} />Export</button>
-            {/* No accept filter: Android often reports .json files with a generic MIME type. */}
+            {/* A filter is needed: without one Android offers photo/video capture and asks for camera and
+                microphone. Generic types are included because Android often reports .json files as those. */}
             <label className="secondary">
               <Icon name="upload" size={20} />Import
-              <input type="file" className="sr-only" onChange={(e) => { pick(e.target.files?.[0]); e.target.value = ''; }} />
+              <input type="file" accept=".json,application/json,text/plain,application/octet-stream" className="sr-only" onChange={(e) => { pick(e.target.files?.[0]); e.target.value = ''; }} />
             </label>
           </div>
         </section>

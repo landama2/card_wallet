@@ -48,6 +48,8 @@ export default defineConfig({
         icons: [
           { src: 'icon-192.png', sizes: '192x192', type: 'image/png' },
           { src: 'icon-512.png', sizes: '512x512', type: 'image/png' },
+          // Full-bleed with the artwork inside the safe zone, so Android can crop it to any launcher shape.
+          { src: 'icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
         ],
         share_target: {
           action: './share',
