@@ -38,6 +38,7 @@ export function applyImport(items: NewItem[], mode: 'merge' | 'replace') {
   if (mode === 'replace') {
     const before = listItems().map(({ id, ...rest }) => rest);
     if (before.length) localStorage.setItem(BEFORE, JSON.stringify(before));
+    else localStorage.removeItem(BEFORE); // an empty wallet has nothing to restore, and an older copy would be unrelated
   }
   const added = mode === 'merge' ? dedupe(listItems(), items) : items;
   insertMany(added, mode === 'replace');

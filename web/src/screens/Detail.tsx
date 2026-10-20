@@ -65,7 +65,7 @@ export default function Detail({ id, till }: { id: number; till: boolean }) {
   const remove = () => {
     deleteItem(item.id);
     back();
-    toast(`Deleted ${item.name}`, 'Undo', () => { restoreItem(item); go(`/item/${item.id}`); });
+    toast(`Deleted ${item.name}`, 'Undo', () => go(`/item/${restoreItem(item)}`));
   };
   const setLogo = async () => {
     const input = await askText('Store website for the logo (e.g. tesco.cz). Leave empty to remove.', item.domain ?? '');
