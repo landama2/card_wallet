@@ -90,8 +90,8 @@ test('export/import round trip, rejects garbage, dedupes', () => {
   assert.equal(out.length, 1);
   assert.equal(out[0].name, 'Concert');
   assert.equal(out[0].notify_id, null);
-  assert.throws(() => parseImport('{not json'));
-  assert.throws(() => parseImport('{"version":1,"items":[{"kind":"x"}]}'));
+  assert.throws(() => parseImport('{not json'), /isn't a wallet backup/);
+  assert.throws(() => parseImport('{"version":1,"items":[{"kind":"x"}]}'), /Item 1 .* incomplete/);
   assert.equal(dedupe([base], out).length, 0);
   assert.equal(dedupe([], out).length, 1);
 });

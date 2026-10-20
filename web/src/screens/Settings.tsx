@@ -1,22 +1,45 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import Icon from '../Icon';
 import { applyImport, exportBackup } from '../backup';
-import { type NewItem, parseImport } from '../logic';
+import { insertMany, listItems } from '../db';
+import { type NewItem, dedupe, parseImport } from '../logic';
 import { go } from '../route';
 
 export default function Settings() {
-  const [pending, setPending] = useState<NewItem[] | null>(null);
+  const [pending, setPending] = useState<{ items: NewItem[]; fresh: number } | null>(null);
   const [confirmReplace, setConfirmReplace] = useState(false);
-  const [status, setStatus] = useState('');
+  const [result, setResult] = useState<{ ok: boolean; title: string; detail?: string; undo?: NewItem[] } | null>(null);
+  const card = useRef<HTMLDivElement>(null);
+  const panel = useRef<HTMLElement>(null);
+  const show = (r: NonNullable<typeof result>) => { setResult(r); setTimeout(() => card.current?.focus()); };
+  const cards = (n: number) => `${n} ${n === 1 ? 'card' : 'cards'}`;
   const pick = async (file: File | undefined) => {
     if (!file) return;
-    setStatus(''); setConfirmReplace(false);
-    try { setPending(parseImport(await file.text())); }
-    catch (e) { setPending(null); setStatus(`Import failed: ${String(e)}`); }
+    setResult(null); setConfirmReplace(false);
+    try {
+      const items = parseImport(await file.text());
+      if (items.length) {
+        setPending({ items, fresh: dedupe(listItems(), items).length });
+        setTimeout(() => panel.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }));
+      } else { setPending(null); show({ ok: false, title: 'This backup has no cards.' }); }
+    } catch (e) {
+      setPending(null);
+      show({ ok: false, title: e instanceof Error ? e.message : "That file couldn't be read." });
+    }
   };
   const run = (mode: 'merge' | 'replace') => {
-    applyImport(pending!, mode); setPending(null); setConfirmReplace(false);
-    setStatus(`Imported ${pending!.length} items.`);
+    const before = listItems().map(({ id, ...rest }) => rest); // for Undo after a replace
+    const { added, skipped } = applyImport(pending!.items, mode);
+    setPending(null); setConfirmReplace(false);
+    show(mode === 'replace'
+      ? { ok: true, title: `Replaced your wallet with ${cards(added)}.`, undo: before.length ? before : undefined }
+      : added
+        ? { ok: true, title: `Added ${cards(added)}.`, detail: skipped ? `${skipped} already in your wallet, skipped.` : undefined }
+        : { ok: true, title: 'Nothing new.', detail: `All ${skipped} are already in your wallet.` });
+  };
+  const undo = (items: NewItem[]) => {
+    insertMany(items, true);
+    show({ ok: true, title: `Restored your ${cards(items.length)}.` });
   };
   return (
     <div className="screen">
@@ -37,25 +60,41 @@ export default function Settings() {
               <input type="file" accept=".json,application/json,text/plain,application/octet-stream" className="sr-only" onChange={(e) => { pick(e.target.files?.[0]); e.target.value = ''; }} />
             </label>
           </div>
-          {status && <p role="status">{status}</p>}
+          {result && (
+            <div ref={card} tabIndex={-1} role={result.ok ? 'status' : 'alert'} className={`result ${result.ok ? 'ok' : 'err'}`}>
+              <Icon name={result.ok ? 'check' : 'alert'} size={22} />
+              <div>
+                <strong>{result.title}</strong>
+                {result.detail && <span>{result.detail}</span>}
+              </div>
+              {result.ok && <button className="primary" onClick={() => go('/cards')}>View cards</button>}
+              {result.undo && <button className="secondary" onClick={() => undo(result.undo!)}>Undo</button>}
+            </div>
+          )}
         </section>
         {pending && (
-          <section className="panel" role="dialog" aria-label="Import backup">
-            <p>{confirmReplace ? `Delete all current items and replace them with the ${pending.length} from the backup?` : `${pending.length} items found in the backup.`}</p>
-            <div className="row">
-              {confirmReplace ? (
-                <>
+          <section ref={panel} className="panel" role="region" aria-live="polite" aria-label="Import backup">
+            {confirmReplace ? (
+              <>
+                <p>This deletes your {cards(listItems().length)} and loads {cards(pending.items.length)} from the backup. You can undo it right after.</p>
+                <div className="row two">
                   <button className="secondary danger-text" onClick={() => run('replace')}>Yes, replace</button>
                   <button className="secondary" onClick={() => setConfirmReplace(false)}>Back</button>
-                </>
-              ) : (
-                <>
-                  <button className="secondary" onClick={() => run('merge')}>Merge</button>
-                  <button className="secondary danger-text" onClick={() => setConfirmReplace(true)}>Replace all</button>
+                </div>
+              </>
+            ) : (
+              <>
+                <p>
+                  <strong>{pending.items.length} in backup: {pending.fresh} new, {pending.items.length - pending.fresh} already here.</strong>
+                  <br />{pending.items.slice(0, 3).map((i) => i.name).join(', ')}{pending.items.length > 3 && ` and ${pending.items.length - 3} more`}
+                </p>
+                <div className="row">
+                  {pending.fresh > 0 && <button className="primary" onClick={() => run('merge')}>Add new cards</button>}
+                  <button className="secondary danger-text" onClick={() => setConfirmReplace(true)}>Replace everything</button>
                   <button className="secondary" onClick={() => setPending(null)}>Cancel</button>
-                </>
-              )}
-            </div>
+                </div>
+              </>
+            )}
           </section>
         )}
       </main>

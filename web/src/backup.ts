@@ -10,5 +10,7 @@ export function exportBackup() {
 }
 
 export function applyImport(items: NewItem[], mode: 'merge' | 'replace') {
-  insertMany(mode === 'merge' ? dedupe(listItems(), items) : items, mode === 'replace');
+  const added = mode === 'merge' ? dedupe(listItems(), items) : items;
+  insertMany(added, mode === 'replace');
+  return { added: added.length, skipped: items.length - added.length };
 }

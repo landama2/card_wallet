@@ -15,6 +15,8 @@ const PATHS = {
   chevron: <path d="m6 9 6 6 6-6" />,
   download: <path d="M12 4v11M7 10l5 5 5-5M5 20h14" />,
   upload: <path d="M12 20V9M7 14l5-5 5 5M5 4h14" />,
+  check: <path d="m5 12 5 5 9-10" />,
+  alert: <><circle cx="12" cy="12" r="9" /><path d="M12 7v6M12 16.5v.5" /></>,
 };
 
 export type IconName = keyof typeof PATHS;

@@ -112,12 +112,13 @@ export const serialize = (items: Item[]) =>
   JSON.stringify({ version: 1, items: items.map(({ id, notify_id, ...rest }) => rest) }, null, 2);
 
 export function parseImport(json: string): NewItem[] {
-  const data = JSON.parse(json);
-  if (data?.version !== 1 || !Array.isArray(data.items)) throw new Error('Not a wallet backup');
-  return data.items.map((x: any) => {
-    const ok = (KINDS as readonly string[]).includes(x.kind) && typeof x.name === 'string'
+  let data: any;
+  try { data = JSON.parse(json); } catch { /* reported below */ }
+  if (data?.version !== 1 || !Array.isArray(data.items)) throw new Error("That file isn't a wallet backup. Choose a file made with Export.");
+  return data.items.map((x: any, i: number) => {
+    const ok = (KINDS as readonly string[]).includes(x?.kind) && typeof x.name === 'string'
       && typeof x.code === 'string' && (FORMATS as readonly string[]).includes(x.format);
-    if (!ok) throw new Error('Bad item in backup');
+    if (!ok) throw new Error(`Item ${i + 1} in the backup is incomplete, so nothing was imported.`);
     return {
       kind: x.kind, name: x.name, code: x.code, format: x.format,
       color: x.color ?? null, note: x.note ?? null,
