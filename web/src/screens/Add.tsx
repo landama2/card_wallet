@@ -43,6 +43,7 @@ export default function Add({ kind: initialKind, shared, editId, scanning, initi
   const [errors, setErrors] = useState<Record<string, string>>({}); // field -> message, shown under the field
   const [ocrNote, setOcrNote] = useState('');
   const [reading, setReading] = useState(false);
+  const [barcodeOpen, setBarcodeOpen] = useState(!!editing?.code); // receipts: the Barcode section (collapsed when empty)
   const saving = useRef(false);
   const codeInput = useRef<HTMLInputElement>(null);
   const typeCode = useRef(false); // "Type the code" in the scanner: focus the Code field once the form is back
@@ -70,6 +71,7 @@ export default function Add({ kind: initialKind, shared, editId, scanning, initi
     }
     setCode(r.code);
     setFormat(r.format);
+    setBarcodeOpen(true);
     formatTouched.current = true;
     mark(['code'], `${FORMAT_LABEL[r.format]} · ${source}`);
   };
@@ -148,6 +150,7 @@ export default function Add({ kind: initialKind, shared, editId, scanning, initi
     if (kind === 'ticket' && !expires) e.expires = 'Pick when it expires';
     if (kind === 'coupon' && !until) e.until = 'Pick the last valid day';
     else if (kind === 'coupon' && from && from > until) e.until = 'Must not be before "Valid from"';
+    if (kind === 'receipt' && deadline && purchased && deadline < purchased) e.deadline = 'Must not be before the purchase date';
     setErrors(e);
     const first = Object.keys(e)[0];
     if (first) { document.getElementById(`f-${first}`)?.focus(); return; }
@@ -184,7 +187,7 @@ export default function Add({ kind: initialKind, shared, editId, scanning, initi
       <Scanner
         onResult={(r) => { fill(r, 'scanned'); closeOverlay(); }}
         onCancel={closeOverlay}
-        onManual={() => { typeCode.current = true; closeOverlay(); }}
+        onManual={() => { typeCode.current = true; setBarcodeOpen(true); closeOverlay(); }}
       />
     );
   }
@@ -305,9 +308,10 @@ export default function Add({ kind: initialKind, shared, editId, scanning, initi
             </div>
             <label className="field">
               <span className="field-label">Claim by (optional)</span>
-              <input className="input" type="date" value={deadline} min={purchased || undefined} onChange={(e) => setDeadline(e.target.value)} />
+              <input {...errProps('deadline')} className="input" type="date" value={deadline} min={purchased || undefined} onChange={(e) => { setDeadline(e.target.value); setErrors(({ deadline: _gone, ...rest }) => rest); }} />
+              {errText('deadline')}
             </label>
-            <details className="more" open={!!code}>
+            <details className="more" open={barcodeOpen} onToggle={(e) => setBarcodeOpen(e.currentTarget.open)}>
               <summary>Barcode (optional)</summary>
               <button className="secondary" onClick={() => openOverlay('scan')}><Icon name="scan" size={20} />Scan code</button>
               {codeFields}
