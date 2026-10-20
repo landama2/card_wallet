@@ -14,6 +14,11 @@ test('the last total line wins over a subtotal; spaced date with two-digit year'
   assert.deepEqual(guessReceipt(lines, NOW), { amount: 389, purchased: '2026-10-03' });
 });
 
+test('tax breakdown and item-count lines after the total are not the total', () => {
+  const lines = ['Celkem k úhradě 1 250,50 Kč', 'Celkem DPH 217,44', 'Celkem položek: 5', 'Datum 3.10.2026'];
+  assert.deepEqual(guessReceipt(lines, NOW), { amount: 1250.5, purchased: '2026-10-03' });
+});
+
 test('future and impossible dates are skipped; no total means no amount', () => {
   assert.deepEqual(guessReceipt(['Platnost do 31.12.2026', '31.02.2026', 'Vystaveno 1.9.2026'], NOW), { purchased: '2026-09-01' });
   assert.deepEqual(guessReceipt(['Hello', 'Suma'], NOW), {});
