@@ -231,3 +231,8 @@ h1, h2 { font-family: var(--display); margin: 0; }
 .ocr-debug th, .ocr-debug td { text-align: left; padding: 3px 4px; border-bottom: 1px solid var(--line, #8884); overflow-wrap: anywhere; vertical-align: top; }
 .ocr-debug th:first-child, .ocr-debug td:first-child { width: 4.5em; overflow-wrap: normal; }
 .ocr-debug pre { margin: 0; font-size: 12px; white-space: pre-wrap; }
+.check { display: flex; align-items: center; gap: 10px; min-height: 44px; font-size: 14px; color: var(--soft-ink); }
+.check input { width: 20px; height: 20px; accent-color: var(--accent); }
+.more { display: flex; flex-direction: column; gap: 12px; }
+.more summary { min-height: 44px; display: flex; align-items: center; font-size: 14px; font-weight: 600; color: var(--soft-ink); cursor: pointer; }
+.more[open] > :not(summary) { margin-top: 12px; }
