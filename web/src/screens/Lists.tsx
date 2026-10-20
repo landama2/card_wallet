@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import Icon, { type IconName } from '../Icon';
 import Logo, { tileColor } from '../Logo';
+import { lastExport, snoozeBackup, snoozedUntil } from '../backup';
 import { listItems } from '../db';
-import { type Item, type Kind, KINDS, byRecent, isArchived, isUpcoming, statusChip } from '../logic';
+import { type Item, type Kind, KINDS, backupDue, byRecent, daysAgo, isArchived, isUpcoming, statusChip } from '../logic';
 import { go } from '../route';
 
 const TITLE: Record<Kind, string> = { card: 'Wallet', ticket: 'Tickets', coupon: 'Coupons' };
@@ -41,6 +42,8 @@ function Row({ item, now, look }: { item: Item; now: number; look?: 'upcoming' |
 export default function Lists({ tab }: { tab: Kind }) {
   const [q, setQ] = useState('');
   const [showArchive, setShowArchive] = useState(false);
+  const [nag, setNag] = useState(() => backupDue(listItems().length, lastExport(), snoozedUntil()));
+  const last = lastExport();
   const now = Date.now();
   const items = listItems().filter((i) => i.kind === tab);
   const byExpiry = (a: Item, b: Item) => (a.expires_at ?? Infinity) - (b.expires_at ?? Infinity);
@@ -57,6 +60,15 @@ export default function Lists({ tab }: { tab: Kind }) {
       </header>
 
       <main className="content">
+        {nag && (
+          <div className="banner nag" role="status">
+            <span>{last ? `Last backup ${daysAgo(last)}.` : 'No backup yet.'} Your cards are stored only on this phone.</span>
+            <div className="nag-actions">
+              <button className="secondary" onClick={() => go('/settings')}>Back up now</button>
+              <button className="link-btn" onClick={() => { snoozeBackup(); setNag(false); }}>Later</button>
+            </div>
+          </div>
+        )}
         {items.length === 0 && <p className="empty">{EMPTY[tab]}</p>}
         {tab === 'card' && items.length > 0 && (
           <>

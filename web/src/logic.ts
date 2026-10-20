@@ -162,3 +162,12 @@ export const DETECTOR_FORMAT: Record<Format, string> = {
 
 export const fromDetector = (f: string): Format | null =>
   FORMATS.find((k) => DETECTOR_FORMAT[k] === f) ?? null;
+
+const DAY = 86_400_000;
+// The list asks for a backup when there's something to lose and the last export is over 30 days old (or never).
+export const backupDue = (itemCount: number, lastExport: number | null, snoozedUntil: number, now = Date.now()) =>
+  itemCount > 0 && now >= snoozedUntil && (lastExport == null || now - lastExport > 30 * DAY);
+
+// 'today', 'yesterday', '3 days ago'.
+export const daysAgo = (t: number, now = Date.now(), locale?: string) =>
+  new Intl.RelativeTimeFormat(locale, { numeric: 'auto' }).format(-Math.floor((now - t) / DAY), 'day');

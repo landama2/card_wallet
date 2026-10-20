@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { type Item, statusChip, storeHue, FORMAT_LABEL, FORMATS, toDomain, logoUrl, initialOf, isArchived, isUpcoming, dayStart, dayEnd, toDateInput, validateCode, guessFormat, reminderTime, serialize, parseImport, dedupe, fromDetector, byRecent } from './logic';
+import { type Item, statusChip, storeHue, FORMAT_LABEL, FORMATS, toDomain, logoUrl, initialOf, isArchived, isUpcoming, dayStart, dayEnd, toDateInput, validateCode, guessFormat, reminderTime, serialize, parseImport, dedupe, fromDetector, byRecent, backupDue, daysAgo } from './logic';
 
 const base: Item = { id: 1, kind: 'ticket', name: 'Concert', code: 'ABC', format: 'qr', color: null, note: null, expires_at: 1000, valid_from: null, domain: null, notify_id: 'n1', created_at: 1 };
 
@@ -136,4 +136,15 @@ test('cards sort by last use, then A–Z; last use survives a backup', () => {
   assert.deepEqual([c('B'), c('A'), c('Old', 5), c('New', 9)].sort(byRecent).map((i) => i.name), ['New', 'Old', 'A', 'B']);
   assert.equal(parseImport(serialize([{ ...base, last_used_at: 7 }]))[0].last_used_at, 7);
   assert.equal(parseImport('{"version":1,"items":[{"kind":"card","name":"A","code":"1","format":"qr"}]}')[0].last_used_at, null);
+});
+
+test('backup reminder: due with items and no export in 30 days, unless snoozed', () => {
+  const D = 86_400_000, now = 100 * D;
+  assert.equal(backupDue(0, null, 0, now), false);
+  assert.equal(backupDue(3, null, 0, now), true);
+  assert.equal(backupDue(3, now - 10 * D, 0, now), false);
+  assert.equal(backupDue(3, now - 31 * D, 0, now), true);
+  assert.equal(backupDue(3, null, now + D, now), false);
+  assert.equal(daysAgo(now, now, 'en'), 'today');
+  assert.equal(daysAgo(now - 3 * D, now, 'en'), '3 days ago');
 });

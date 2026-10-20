@@ -1,11 +1,15 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Icon from '../Icon';
-import { applyImport, exportBackup } from '../backup';
+import { applyImport, exportBackup, lastExport } from '../backup';
 import { insertMany, listItems } from '../db';
-import { type NewItem, dedupe, parseImport } from '../logic';
+import { type NewItem, daysAgo, dedupe, parseImport } from '../logic';
 import { go } from '../route';
 
 export default function Settings() {
+  const [last, setLast] = useState(lastExport);
+  const [persisted, setPersisted] = useState<boolean | null>(null);
+  useEffect(() => { navigator.storage?.persisted?.().then(setPersisted); }, []);
+  const doExport = async () => { if (await exportBackup()) setLast(lastExport()); };
   const [pending, setPending] = useState<{ items: NewItem[]; fresh: number } | null>(null);
   const [confirmReplace, setConfirmReplace] = useState(false);
   const [result, setResult] = useState<{ ok: boolean; title: string; detail?: string; undo?: NewItem[] } | null>(null);
@@ -51,8 +55,12 @@ export default function Settings() {
         <section className="panel">
           <h2 className="section-label">Backup</h2>
           <p>Your cards are stored only on this phone. Export a backup now and then, and keep it somewhere safe.</p>
+          <p className="backup-status">
+            {last ? `Last backup: ${daysAgo(last)}` : 'No backup yet'}
+            {persisted === false && ' · This browser may clear your data when the phone runs low on space'}
+          </p>
           <div className="two">
-            <button className="secondary" onClick={exportBackup}><Icon name="download" size={20} />Export</button>
+            <button className="secondary" onClick={doExport}><Icon name="download" size={20} />Export</button>
             {/* A filter is needed: without one Android offers photo/video capture and asks for camera and
                 microphone. Generic types are included because Android often reports .json files as those. */}
             <label className="secondary">
