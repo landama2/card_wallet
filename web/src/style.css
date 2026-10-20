@@ -85,9 +85,21 @@ h1, h2 { font-family: var(--display); margin: 0; }
 .code-error a { color: #1f4fd1; font-weight: 600; }
 .status { align-self: center; }
 .tip { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-radius: 16px; background: #fff7e6; color: #6b4300; font-size: 14px; line-height: 1.35; }
+.tip svg { flex: none; }
 .actions { margin-top: auto; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
 .action { height: 64px; border: none; border-radius: 16px; background: var(--surface); font-size: 13px; font-weight: 500; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; }
 .action.danger { color: var(--danger); }
+.code-card { cursor: pointer; color: #14161a; }
+.code-card .format-label { color: #5b616e; }
+
+/* Till mode: the code alone, as large as the screen allows; white in every theme. */
+.till { position: fixed; inset: 0; z-index: 50; background: #fff; color: #14161a; display: flex; align-items: center; justify-content: center; padding: 24px; }
+.till-code { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 16px; }
+.till .code svg { width: 100%; height: auto; max-height: 70dvh; display: block; }
+.till .codetext { font-size: 24px; }
+/* 1D codes turn sideways: laid out as wide as the screen is tall, then rotated. */
+.till.linear .till-code { width: 88dvh; flex: none; transform: rotate(90deg); }
+.till.linear .code svg { max-height: calc(100vw - 110px); }
 
 /* Forms */
 .form { flex: 1; padding: 8px 20px calc(96px + env(safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; gap: 14px; }

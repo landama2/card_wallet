@@ -48,6 +48,8 @@ export const FORMAT_LABEL: Record<Format, string> = {
   qr: 'QR', ean13: 'EAN-13', ean8: 'EAN-8', upc_a: 'UPC-A', code128: 'Code 128',
   code39: 'Code 39', pdf417: 'PDF417', aztec: 'Aztec', datamatrix: 'Data Matrix',
 };
+// 1D barcodes: in till mode they turn sideways so the bars use the long side of the screen.
+export const LINEAR = new Set<Format>(['ean13', 'ean8', 'upc_a', 'code128', 'code39']);
 
 // Stable hue per store name: the colour of its tile, detail screen and fallback logo.
 export const storeHue = (name: string) => [...name.trim().toLowerCase()].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7);

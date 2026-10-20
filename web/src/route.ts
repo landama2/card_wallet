@@ -12,3 +12,10 @@ export function useRoute() {
 }
 
 export const go = (to: string) => { location.hash = to; };
+
+// Overlays (scanner, till mode) are `?flag=1` on the current hash, so the phone's Back button closes them.
+export const openOverlay = (flag: string) => {
+  const h = location.hash.slice(1) || '/cards';
+  go(`${h}${h.includes('?') ? '&' : '?'}${flag}=1`);
+};
+export const closeOverlay = () => history.back();

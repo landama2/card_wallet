@@ -4,12 +4,12 @@ import { ask, askText, notify } from '../Dialog';
 import Icon from '../Icon';
 import Logo, { tileColor } from '../Logo';
 import { deleteItem, getItem, updateItem } from '../db';
-import { FORMAT_LABEL, statusChip, toDomain, validityLabel } from '../logic';
-import { go } from '../route';
+import { FORMAT_LABEL, LINEAR, statusChip, toDomain, validityLabel } from '../logic';
+import { closeOverlay, go, openOverlay } from '../route';
 
 const KIND_LABEL = { card: 'Loyalty card', ticket: 'Ticket', coupon: 'Coupon' } as const;
 
-export default function Detail({ id }: { id: number }) {
+export default function Detail({ id, till }: { id: number; till: boolean }) {
   const [rev, setRev] = useState(0); // bumped after an edit so the item is re-read from storage
   const item = getItem(id);
   const color = item ? tileColor(item.name) : null;
@@ -34,6 +34,21 @@ export default function Detail({ id }: { id: number }) {
     meta.content = color;
     return () => { meta.content = before; };
   }, [color]);
+
+  // Esc closes till mode on desktop; on the phone it's Back or a tap.
+  useEffect(() => {
+    if (!till) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') closeOverlay(); };
+    addEventListener('keydown', onKey);
+    return () => removeEventListener('keydown', onKey);
+  }, [till]);
+
+  // ponytail: StrictMode runs this initializer twice in dev, so the tip disappears after 2 dev views; fine in prod.
+  const [showTip] = useState(() => {
+    const n = Number(localStorage.getItem('wallet.tipViews') ?? 0) + 1;
+    localStorage.setItem('wallet.tipViews', String(n));
+    return n <= 3;
+  });
 
   if (!item) {
     return (
@@ -70,18 +85,27 @@ export default function Detail({ id }: { id: number }) {
       </div>
       <div className="sheet">
         {chip && <span className={`chip status ${chip.tone}`}>{chip.text}</span>}
-        <div className="code-card">
+        <div className="code-card" role="button" tabIndex={0} aria-label="Show code full screen"
+          onClick={() => openOverlay('till')} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') openOverlay('till'); }}>
           <CodeView code={item.code} format={item.format} editHref={`#/edit/${item.id}`} />
           <p className="codetext">{item.code}</p>
-          <span className="format-label">{FORMAT_LABEL[item.format]}</span>
+          <span className="format-label">{FORMAT_LABEL[item.format]} · tap for full screen</span>
         </div>
-        <p className="tip"><Icon name="sun" /> Turn the screen brightness up if the till can't read it. The screen stays on while this is open.</p>
+        {showTip && <p className="tip"><Icon name="sun" /> Turn the screen brightness up if the till can't read it. The screen stays on while this is open.</p>}
         <div className="actions">
           <button className="action" onClick={() => go(`/edit/${item.id}`)}><Icon name="edit" size={20} />Edit</button>
           <button className="action" onClick={setLogo}><Icon name="image" size={20} />Logo</button>
           <button className="action danger" onClick={remove}><Icon name="trash" size={20} />Delete</button>
         </div>
       </div>
+      {till && (
+        <div className={'till' + (LINEAR.has(item.format) ? ' linear' : '')} role="dialog" aria-modal="true" aria-label={`${item.name} code`} onClick={closeOverlay}>
+          <div className="till-code">
+            <CodeView code={item.code} format={item.format} />
+            <p className="codetext">{item.code}</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

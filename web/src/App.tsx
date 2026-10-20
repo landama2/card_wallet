@@ -8,7 +8,7 @@ import { useRoute } from './route';
 export default function App() {
   const { path, params } = useRoute();
   const id = path.match(/^\/item\/(\d+)$/)?.[1];
-  if (id) return <Detail id={Number(id)} />;
+  if (id) return <Detail id={Number(id)} till={params.get('till') === '1'} />;
   const editId = path.match(/^\/edit\/(\d+)$/)?.[1];
   if (editId) return <Add key={path} kind="card" shared={false} editId={Number(editId)} />;
   if (path === '/add') {
