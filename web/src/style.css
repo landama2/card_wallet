@@ -162,7 +162,10 @@ h1, h2 { font-family: var(--display); margin: 0; }
 .scanner video { flex: 1; width: 100%; object-fit: cover; }
 .scanner .frame { position: absolute; left: 12%; right: 12%; top: 28%; height: 28%; border: 3px solid rgba(255, 255, 255, 0.9); border-radius: 20px; box-shadow: 0 0 0 100vmax rgba(0, 0, 0, 0.35); pointer-events: none; }
 .scanner .hint-text { position: absolute; left: 0; right: 0; top: calc(28% - 48px); text-align: center; color: #fff; font-size: 15px; }
-.scanner .cancel { position: absolute; left: 20px; right: 20px; bottom: calc(28px + env(safe-area-inset-bottom, 0px)); height: 56px; border: none; border-radius: 16px; background: rgba(255, 255, 255, 0.92); color: var(--ink); font-size: 16px; font-weight: 600; }
+.scanner-actions { position: absolute; left: 20px; right: 20px; bottom: calc(28px + env(safe-area-inset-bottom, 0px)); display: flex; gap: 10px; }
+.scanner-actions button:not(.glass) { flex: 1; height: 56px; border: none; border-radius: 16px; background: rgba(255, 255, 255, 0.92); color: #14161a; font-size: 16px; font-weight: 600; }
+.scanner-actions .glass { width: 56px; height: 56px; border-radius: 16px; flex: none; }
+.scanner-actions .glass[aria-pressed='true'] { background: #fff; color: #14161a; }
 .panel .backup-status { color: var(--soft-ink); font-weight: 600; }
 .nag { display: flex; flex-direction: column; gap: 8px; }
 .nag-actions { display: flex; gap: 8px; align-items: center; }

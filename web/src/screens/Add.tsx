@@ -8,7 +8,7 @@ import { getItem, insertItem, updateItem } from '../db';
 import { FORMATS, FORMAT_LABEL, KINDS, type Format, type Kind, dayEnd, dayStart, guessFormat, toDateInput, toDomain, validateCode } from '../logic';
 import { readLines } from '../ocr';
 import { guessFromText } from '../ocr-parse';
-import { go } from '../route';
+import { closeOverlay, go, openOverlay } from '../route';
 
 const KIND_LABEL: Record<Kind, string> = { card: 'Card', ticket: 'Ticket', coupon: 'Coupon' };
 type Field = 'name' | 'website' | 'code' | 'from' | 'until';
@@ -20,7 +20,7 @@ const toDateTimeInput = (t: number) => {
 };
 
 // Add a new item, or edit one when `editId` is given (same form, prefilled).
-export default function Add({ kind: initialKind, shared, editId }: { kind: Kind; shared: boolean; editId?: number }) {
+export default function Add({ kind: initialKind, shared, editId, scanning }: { kind: Kind; shared: boolean; editId?: number; scanning: boolean }) {
   const editing = editId != null ? getItem(editId) : null;
   const [kind, setKind] = useState<Kind>(editing?.kind ?? initialKind);
   const [name, setName] = useState(editing?.name ?? '');
@@ -31,11 +31,15 @@ export default function Add({ kind: initialKind, shared, editId }: { kind: Kind;
   const [from, setFrom] = useState(editing?.kind === 'coupon' && editing.valid_from ? toDateInput(editing.valid_from) : '');
   const [until, setUntil] = useState(editing?.kind === 'coupon' && editing.expires_at ? toDateInput(editing.expires_at) : '');
   const [website, setWebsite] = useState(editing?.domain ?? '');
-  const [scanning, setScanning] = useState(false);
   const [filled, setFilled] = useState<Partial<Record<Field, string>>>({}); // field -> badge text
   const [ocrNote, setOcrNote] = useState('');
   const [reading, setReading] = useState(false);
   const saving = useRef(false);
+  const codeInput = useRef<HTMLInputElement>(null);
+  const typeCode = useRef(false); // "Type the code" in the scanner: focus the Code field once the form is back
+  useEffect(() => {
+    if (!scanning && typeCode.current) { typeCode.current = false; codeInput.current?.focus(); }
+  }, [scanning]);
   const formatTouched = useRef(editing != null); // once the user picks a type (or a scan sets one), stop guessing
   const back = () => go(editing ? `/item/${editing.id}` : `/${kind}s`);
 
@@ -137,7 +141,13 @@ export default function Add({ kind: initialKind, shared, editId }: { kind: Kind;
   };
 
   if (scanning) {
-    return <Scanner onResult={(r) => { fill(r, 'scanned'); setScanning(false); }} onCancel={() => setScanning(false)} />;
+    return (
+      <Scanner
+        onResult={(r) => { fill(r, 'scanned'); closeOverlay(); }}
+        onCancel={closeOverlay}
+        onManual={() => { typeCode.current = true; closeOverlay(); }}
+      />
+    );
   }
 
   const badge = (f: Field) => filled[f] && <span className="badge">{filled[f]}</span>;
@@ -178,7 +188,7 @@ export default function Add({ kind: initialKind, shared, editId }: { kind: Kind;
         </label>
 
         <div className="two">
-          <button className="secondary" onClick={() => setScanning(true)}><Icon name="scan" size={20} />Scan code</button>
+          <button className="secondary" onClick={() => openOverlay('scan')}><Icon name="scan" size={20} />Scan code</button>
           <label className="secondary">
             {reading ? <span className="spinner" aria-hidden /> : <Icon name="image" size={20} />}From image
             <input type="file" accept="image/*" className="sr-only" onChange={(e) => { const f = e.target.files?.[0]; if (f) importBlob(f); e.target.value = ''; }} />
@@ -187,7 +197,7 @@ export default function Add({ kind: initialKind, shared, editId }: { kind: Kind;
 
         <label className="field">
           <span className="field-label">Code {badge('code')}</span>
-          <input className={cls('code')} value={code} onChange={(e) => { typed('code', setCode)(e.target.value); if (!formatTouched.current) setFormat(guessFormat(e.target.value)); }} placeholder="Scan, import or type the number" autoCapitalize="none" />
+          <input ref={codeInput} className={cls('code')} value={code} onChange={(e) => { typed('code', setCode)(e.target.value); if (!formatTouched.current) setFormat(guessFormat(e.target.value)); }} placeholder="Scan, import or type the number" autoCapitalize="none" />
         </label>
         <div className="pills" role="group" aria-label="Code type">
           {FORMATS.map((f) => (
