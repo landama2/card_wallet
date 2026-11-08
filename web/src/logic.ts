@@ -190,6 +190,13 @@ export const DETECTOR_FORMAT: Record<Format, string> = {
 export const fromDetector = (f: string): Format | null =>
   FORMATS.find((k) => DETECTOR_FORMAT[k] === f) ?? null;
 
+// Second try for gallery photos that are dim or washed out: each colour channel becomes 2v - 50
+// (the clamped array caps it at 0..255), alpha untouched. In place.
+export const boostContrast = (px: Uint8ClampedArray) => {
+  for (let i = 0; i < px.length; i++) if (i % 4 !== 3) px[i] = px[i] * 2 - 50;
+  return px;
+};
+
 const DAY = 86_400_000;
 // The list asks for a backup when there's something to lose and the last export is over 30 days old (or never).
 export const backupDue = (itemCount: number, lastExport: number | null, snoozedUntil: number, now = Date.now()) =>

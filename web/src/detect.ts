@@ -1,5 +1,5 @@
 import type {} from 'barcode-detector/polyfill'; // global BarcodeDetector types only
-import { DETECTOR_FORMAT, FORMATS, fromDetector, type Format } from './logic';
+import { boostContrast, DETECTOR_FORMAT, FORMATS, fromDetector, type Format } from './logic';
 
 type Result = { code: string; format: Format };
 
@@ -25,4 +25,15 @@ export async function detect(source: ImageBitmapSource | HTMLVideoElement): Prom
   return null;
 }
 
-export const detectBlob = async (blob: Blob) => detect(await createImageBitmap(blob));
+// Photos get a second, higher-contrast pass when the first finds nothing.
+export async function detectBlob(blob: Blob) {
+  const bmp = await createImageBitmap(blob);
+  const r = await detect(bmp);
+  if (r || typeof OffscreenCanvas !== 'function') return r;
+  const ctx = new OffscreenCanvas(bmp.width, bmp.height).getContext('2d');
+  if (!ctx) return null;
+  ctx.drawImage(bmp, 0, 0);
+  const img = ctx.getImageData(0, 0, bmp.width, bmp.height);
+  boostContrast(img.data);
+  return detect(img);
+}

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { type Item, statusChip, storeHue, FORMAT_LABEL, FORMATS, toDomain, logoUrl, initialOf, isArchived, isUpcoming, dayStart, dayEnd, toDateInput, validateCode, guessFormat, reminderTime, serialize, parseImport, dedupe, fromDetector, byRecent, backupDue, daysAgo, validityLabel, formatAmount, parseAmount, receiptFacts } from './logic';
+import { type Item, statusChip, storeHue, FORMAT_LABEL, FORMATS, toDomain, logoUrl, initialOf, isArchived, isUpcoming, dayStart, dayEnd, toDateInput, validateCode, guessFormat, reminderTime, serialize, parseImport, dedupe, fromDetector, boostContrast, byRecent, backupDue, daysAgo, validityLabel, formatAmount, parseAmount, receiptFacts } from './logic';
 
 const base: Item = { id: 1, kind: 'ticket', name: 'Concert', code: 'ABC', format: 'qr', color: null, note: null, expires_at: 1000, valid_from: null, domain: null, notify_id: 'n1', created_at: 1 };
 
@@ -214,4 +214,9 @@ test('serialize adds a photo path only where given', () => {
   assert.equal(out.items[0].photo, undefined);
   assert.equal(out.items[1].photo, 'photos/1.jpg');
   assert.equal(JSON.parse(serialize([base])).items[0].photo, undefined);
+});
+
+test('contrast boost doubles each colour channel minus 50, clamps, and keeps alpha', () => {
+  const px = boostContrast(new Uint8ClampedArray([10, 100, 200, 128, 25, 0, 255, 7]));
+  assert.deepEqual([...px], [0, 150, 255, 128, 0, 0, 255, 7]);
 });
