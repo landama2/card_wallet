@@ -16,7 +16,7 @@ self.addEventListener('fetch', (e) => {
     const file = (await e.request.formData()).get('file');
     if (file instanceof File) {
       const cache = await caches.open('shared');
-      await cache.put('shared-file', new Response(file, { headers: { 'content-type': file.type } }));
+      await cache.put('shared-file', new Response(file, { headers: { 'content-type': /\.pkpass$/i.test(file.name) ? 'application/vnd.apple.pkpass' : file.type } }));
     }
     return Response.redirect(new URL('./#/add?kind=ticket&shared=1', self.registration.scope).href, 303);
   })());

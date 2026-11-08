@@ -10,6 +10,7 @@ import { FORMATS, FORMAT_LABEL, KINDS, type Format, type Kind, dayEnd, dayStart,
 import { readLines } from '../ocr';
 import { guessFromText } from '../ocr-parse';
 import { putPhoto, shrinkPhoto } from '../photos';
+import { isPkpass, parsePkpass } from '../pkpass';
 import { guessReceipt } from '../receipt-parse';
 import { closeOverlay, go, openOverlay } from '../route';
 
@@ -116,11 +117,26 @@ export default function Add({ kind: initialKind, shared, editId, scanning, initi
   // Barcode and text recognition run side by side; a "No code found" alert waits for the text
   // recognition, so the blocking dialog neither delays nor interrupts it.
   const importBlob = async (blob: Blob) => {
+    if (isPkpass(blob)) return importPass(blob);
     setPhoto(blob);
     const ocr = readText(blob);
     const r = await detectBlob(blob).catch(() => null);
     if (!r) await ocr;
     fill(r, 'from image');
+  };
+
+  // Apple Wallet pass: everything is in pass.json, so no OCR.
+  const importPass = async (blob: Blob) => {
+    let p;
+    try { p = parsePkpass(new Uint8Array(await blob.arrayBuffer())); }
+    catch { return notify('This Wallet pass could not be read.'); }
+    setKind(p.kind);
+    if (p.name && !current.current.name) { setName(p.name); mark(['name'], 'from pass'); }
+    if (p.note) setNote((n) => n || p.note);
+    if (p.date != null && p.kind === 'ticket') setExpires(toDateTimeInput(p.date));
+    if (p.date != null && p.kind === 'coupon') { setUntil(toDateInput(p.date)); mark(['until'], 'from pass'); }
+    if (p.image) setPhoto(p.image);
+    fill(p.code, 'from pass');
   };
 
   const sharedTaken = useRef(false); // StrictMode runs effects twice in dev; import the shared file once
@@ -204,7 +220,7 @@ export default function Add({ kind: initialKind, shared, editId, scanning, initi
   const fromImage = (label: string) => (
     <label className="secondary">
       {reading ? <span className="spinner" aria-hidden /> : <Icon name="image" size={20} />}{label}
-      <input type="file" accept="image/*" className="sr-only" onChange={(e) => { const f = e.target.files?.[0]; if (f) importBlob(f); e.target.value = ''; }} />
+      <input type="file" accept="image/*,.pkpass,application/vnd.apple.pkpass" className="sr-only" onChange={(e) => { const f = e.target.files?.[0]; if (f) importBlob(f); e.target.value = ''; }} />
     </label>
   );
   const keepSwitch = photo && (
