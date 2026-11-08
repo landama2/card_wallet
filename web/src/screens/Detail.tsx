@@ -7,6 +7,7 @@ import { deleteItem, getItem, restoreItem, updateItem } from '../db';
 import { FORMAT_LABEL, LINEAR, receiptFacts, statusChip, toDomain, validityLabel } from '../logic';
 import { deletePhoto, getPhoto, putPhoto, shrinkPhoto } from '../photos';
 import { closeOverlay, go, openOverlay } from '../route';
+import { getLook } from '../theme';
 
 const KIND_LABEL = { card: 'Loyalty card', ticket: 'Ticket', coupon: 'Coupon', receipt: 'Receipt' } as const;
 
@@ -42,7 +43,7 @@ export default function Detail({ id, till, photoOpen }: { id: number; till: bool
 
   // The phone's status bar takes the store colour too, while this screen is open (both light and dark metas).
   useEffect(() => {
-    if (!color) return;
+    if (!color || getLook() === 'cards') return; // Real cards: the page stays the normal background
     const metas = [...document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]')];
     const before = metas.map((m) => m.content);
     metas.forEach((m) => { m.content = color; });
@@ -111,7 +112,7 @@ export default function Detail({ id, till, photoOpen }: { id: number; till: bool
   const chip = statusChip(item);
 
   return (
-    <div className="detail" style={{ background: color! }}>
+    <div className="detail" style={{ background: color!, '--store': color } as React.CSSProperties}>
       <header className="subbar">
         <button className="glass" aria-label="Back" onClick={back}><Icon name="back" /></button>
       </header>

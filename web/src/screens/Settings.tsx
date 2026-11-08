@@ -7,10 +7,11 @@ import { type NewItem, daysAgo, dedupe, parseImport } from '../logic';
 import { ocrDebugOn, setOcrDebug } from '../OcrDebug';
 import { clearPhotos, photoUsage, putPhoto } from '../photos';
 import { go } from '../route';
-import { getTheme, setTheme } from '../theme';
+import { getLook, getTheme, setLook, setTheme } from '../theme';
 
 export default function Settings() {
   const [theme, setThemeState] = useState(getTheme);
+  const [look, setLookState] = useState(getLook);
   const [ocrDebug, setOcrDebugState] = useState(ocrDebugOn);
   const [last, setLast] = useState(lastExport);
   const [persisted, setPersisted] = useState<boolean | null>(null);
@@ -94,6 +95,12 @@ export default function Settings() {
           <div className="segmented">
             {(['system', 'light', 'dark'] as const).map((t) => (
               <button key={t} aria-pressed={theme === t} onClick={() => { setTheme(t); setThemeState(t); }}>{t[0].toUpperCase() + t.slice(1)}</button>
+            ))}
+          </div>
+          <h2 className="section-label">Look</h2>
+          <div className="segmented" role="group" aria-label="Look">
+            {([['classic', 'Classic'], ['soft', 'Soft tiles'], ['cards', 'Real cards']] as const).map(([l, label]) => (
+              <button key={l} aria-pressed={look === l} onClick={() => { setLook(l); setLookState(l); }}>{label}</button>
             ))}
           </div>
         </section>

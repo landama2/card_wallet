@@ -20,9 +20,10 @@ const EMPTY: Record<Kind, string> = {
 
 function Tile({ item }: { item: Item }) {
   return (
-    <button className="tile" style={{ background: tileColor(item.name) }} onClick={() => go(`/item/${item.id}`)}>
+    <button className="tile" style={{ background: tileColor(item.name), '--store': tileColor(item.name) } as React.CSSProperties} onClick={() => go(`/item/${item.id}`)}>
       <Logo name={item.name} domain={item.domain ?? null} mark />
       <span className="name">{item.name}</span>
+      <span className="tile-foot" aria-hidden><span>•••• {item.code.slice(-4)}</span><span>Tap to show code</span></span>
     </button>
   );
 }
@@ -55,6 +56,9 @@ export default function Lists({ tab }: { tab: Kind }) {
   const upcoming = live.filter((i) => isUpcoming(i, now)).sort((a, b) => a.valid_from! - b.valid_from!);
   const archive = items.filter((i) => isArchived(i, now)).sort((a, b) => (b.expires_at ?? 0) - (a.expires_at ?? 0));
   const needle = q.trim().toLowerCase();
+  // Tickets and coupons that end within 3 days, for the strip above the cards (Soft tiles look only).
+  const soon = tab !== 'card' ? [] : listItems().flatMap((i) => { const chip = statusChip(i, now); return chip?.tone === 'soon' ? [{ i, chip }] : []; })
+    .sort((a, b) => a.i.expires_at! - b.i.expires_at!).slice(0, 4);
   const cards = items.filter((i) => [i.name, i.note ?? '', i.code].some((s) => s.toLowerCase().includes(needle))).sort(byRecent);
   return (
     <div className="screen">
@@ -80,6 +84,16 @@ export default function Lists({ tab }: { tab: Kind }) {
               <Icon name="search" size={20} />
               <input type="search" placeholder="Search cards" aria-label="Search cards" value={q} onChange={(e) => setQ(e.target.value)} />
             </label>
+            {soon.length > 0 && !needle && (
+              <section className="soon-strip" aria-label="Ending soon">
+                <h2 className="section-label">Ending soon</h2>
+                <div>{soon.map(({ i, chip }) => (
+                  <button key={i.id} className={`soon ${i.kind}`} onClick={() => go(`/item/${i.id}`)}>
+                    <span className="when">{chip.text}</span><span className="what">{i.name}</span>
+                  </button>
+                ))}</div>
+              </section>
+            )}
             <h2 className="section-label">Loyalty cards · {cards.length}</h2>
             <div className="tiles">{cards.map((i) => <Tile key={i.id} item={i} />)}</div>
             {cards.length === 0 && needle && (

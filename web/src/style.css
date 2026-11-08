@@ -27,6 +27,7 @@
   --tip-bg: #fff7e6; --tip-ink: #6b4300;
   --toast-bg: #14161a;
   --display: Manrope, Inter, system-ui, sans-serif;
+  --text: Inter, system-ui, sans-serif;
   --tabbar: calc(84px + env(safe-area-inset-bottom, 0px));
 }
 /* Dark tokens, applied by the OS setting unless the user forced light, or by forcing dark in Settings.
@@ -58,7 +59,7 @@
 
 * { box-sizing: border-box; }
 html, body { margin: 0; background: var(--bg); }
-body { font: 16px/1.4 Inter, system-ui, sans-serif; color: var(--ink); -webkit-tap-highlight-color: transparent; }
+body { font: 16px/1.4 var(--text); color: var(--ink); -webkit-tap-highlight-color: transparent; }
 button, input, select { font: inherit; color: inherit; }
 button { cursor: pointer; }
 h1, h2 { font-family: var(--display); margin: 0; }
@@ -101,6 +102,8 @@ h1, h2 { font-family: var(--display); margin: 0; }
 .chip.ok { background: var(--ok-bg); color: var(--ok-ink); }
 .chip.upcoming { background: var(--accent-soft); color: var(--accent-soft-ink); }
 .chip.expired { background: var(--neutral-bg); color: var(--soft-ink); }
+/* Ending-soon strip and card footers: only the Soft tiles / Real cards looks show them (below). */
+.soon-strip, .tile-foot { display: none; }
 .link-btn { height: 44px; border: none; background: transparent; color: var(--accent); font-size: 14px; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
 
 .fab { position: fixed; right: 20px; bottom: calc(var(--tabbar) + 20px); width: 60px; height: 60px; border-radius: 30px; border: none; background: var(--accent); color: var(--on-accent); display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 20px rgba(31, 79, 209, 0.35); }
@@ -254,3 +257,101 @@ h1, h2 { font-family: var(--display); margin: 0; }
 /* ponytail: tap toggles fit / full resolution with scrolling; real pinch-zoom only if this proves too clumsy */
 .photo-view.zoomed { align-items: flex-start; justify-content: flex-start; }
 .photo-view.zoomed img { max-width: none; max-height: none; cursor: zoom-out; }
+
+/* ── Looks (Settings › Look). Classic is everything above; these override it. ──
+   Each look: light tokens, then dark tokens for the system setting and for forced dark. */
+
+/* Soft tiles: warm cream, rounded colour tiles, Nunito, coral accent. */
+:root[data-look='soft'] {
+  --bg: #fbf7f1; --surface: #ffffff; --field-bg: #ffffff; --seg-bg: #f1e9df; --seg-on: #ffffff;
+  --ink: #2b211a; --muted: #6b5e52; --soft-ink: #4a3d33; --line: #eadfd2; --field-line: #e0d4c6; --dashed: #d6c7b6; --filled-line: #f0a77c;
+  --accent: #c2410c; --on-accent: #ffffff; --accent-soft: #ffe8d6; --accent-soft-ink: #9a3412;
+  --neutral-bg: #f1e9df; --shadow: 0 1px 3px rgba(43, 33, 26, 0.08);
+  --display: Nunito, system-ui, sans-serif; --text: Nunito, system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root[data-look='soft']:not([data-theme='light']) {
+    --bg: #1c1714; --surface: #27201b; --field-bg: #2f2721; --seg-bg: #2f2721; --seg-on: #45392f;
+    --ink: #f5ede6; --muted: #bba99a; --soft-ink: #dccbbd; --line: #3a3029; --field-line: #4a3e34; --dashed: #5a4c40; --filled-line: #c2703f;
+    --accent: #fdba8c; --on-accent: #3a1606; --accent-soft: #4a2412; --accent-soft-ink: #ffd6bc; --neutral-bg: #352c25; --shadow: none;
+  }
+}
+:root[data-look='soft'][data-theme='dark'] {
+  --bg: #1c1714; --surface: #27201b; --field-bg: #2f2721; --seg-bg: #2f2721; --seg-on: #45392f;
+  --ink: #f5ede6; --muted: #bba99a; --soft-ink: #dccbbd; --line: #3a3029; --field-line: #4a3e34; --dashed: #5a4c40; --filled-line: #c2703f;
+  --accent: #fdba8c; --on-accent: #3a1606; --accent-soft: #4a2412; --accent-soft-ink: #ffd6bc; --neutral-bg: #352c25; --shadow: none;
+}
+[data-look='soft'] h1, [data-look='soft'] h2 { font-weight: 900; }
+[data-look='soft'] .section-label { text-transform: none; letter-spacing: 0; font-size: 17px; font-weight: 800; color: var(--ink); }
+[data-look='soft'] .search, [data-look='soft'] .icon-btn { border-radius: 24px; }
+[data-look='soft'] .icon-btn { background: var(--seg-bg); box-shadow: none; }
+[data-look='soft'] .tile { height: 96px; border-radius: 22px; padding: 12px 14px; box-shadow: none; }
+[data-look='soft'] .tile .name { font-size: 17px; font-weight: 800; }
+[data-look='soft'] .mark { width: 34px; height: 34px; border-radius: 50%; background: rgba(255, 255, 255, 0.94); color: var(--store); font-size: 16px; font-weight: 900; }
+[data-look='soft'] .store .mark { width: 56px; height: 56px; font-size: 26px; }
+[data-look='soft'] .row-card, [data-look='soft'] .panel, [data-look='soft'] .action { border-radius: 22px; }
+[data-look='soft'] .soon-strip { display: flex; flex-direction: column; gap: 10px; margin-bottom: 4px; }
+[data-look='soft'] .soon-strip > div { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.soon { border: none; border-radius: 20px; padding: 14px; text-align: left; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.soon .when { font-size: 13px; font-weight: 800; }
+.soon .what { font-size: 16px; font-weight: 800; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.soon.coupon { background: var(--soon-bg); color: var(--soon-ink); }
+.soon.ticket { background: var(--ok-bg); color: var(--ok-ink); }
+[data-look='soft'] .fab { box-shadow: 0 6px 16px rgba(194, 65, 12, 0.35); bottom: calc(var(--tabbar) + 24px); }
+/* Floating pill tab bar with a filled current tab. */
+[data-look='soft'] .tabbar { left: 12px; right: 12px; bottom: calc(12px + env(safe-area-inset-bottom, 0px)); height: 72px; padding: 8px; border: none; border-radius: 28px; box-shadow: 0 4px 18px rgba(43, 33, 26, 0.12); }
+[data-look='soft'] .tab { border-radius: 20px; font-size: 13px; font-weight: 700; }
+[data-look='soft'] .tab.on { background: var(--accent-soft); color: var(--accent-soft-ink); font-weight: 800; }
+[data-look='soft'] .sheet { border-radius: 32px 32px 0 0; }
+[data-look='soft'] .code-card { border-radius: 28px; box-shadow: 0 2px 10px rgba(43, 33, 26, 0.08); }
+[data-look='soft'] .action { height: 76px; font-size: 14px; font-weight: 800; }
+[data-look='soft'] .primary, [data-look='soft'] .secondary, [data-look='soft'] .input { border-radius: 18px; }
+
+/* Real cards: card-shaped tiles in an overlapping wallet stack, Plus Jakarta Sans, teal accent. */
+:root[data-look='cards'] {
+  --bg: #f2f4f3; --surface: #ffffff; --field-bg: #ffffff; --seg-bg: #e3e8e6; --seg-on: #ffffff;
+  --ink: #0f1a17; --muted: #4e5b57; --soft-ink: #33403c; --line: #d9dfdc; --field-line: #cbd3cf; --dashed: #b9c3bf; --filled-line: #6fc2b4;
+  --accent: #0f766e; --on-accent: #ffffff; --accent-soft: #ccede6; --accent-soft-ink: #115e59;
+  --neutral-bg: #e3e8e6; --shadow: 0 1px 3px rgba(15, 26, 23, 0.08);
+  --display: 'Plus Jakarta Sans', system-ui, sans-serif; --text: 'Plus Jakarta Sans', system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root[data-look='cards']:not([data-theme='light']) {
+    --bg: #0e1513; --surface: #17201d; --field-bg: #1d2825; --seg-bg: #1d2825; --seg-on: #2e3c38;
+    --ink: #e8efec; --muted: #9db0aa; --soft-ink: #c6d3cf; --line: #26322e; --field-line: #34433e; --dashed: #46574f; --filled-line: #2f8f82;
+    --accent: #5eead4; --on-accent: #042f2a; --accent-soft: #123b35; --accent-soft-ink: #a7f3e4; --neutral-bg: #23302c; --shadow: none;
+  }
+}
+:root[data-look='cards'][data-theme='dark'] {
+  --bg: #0e1513; --surface: #17201d; --field-bg: #1d2825; --seg-bg: #1d2825; --seg-on: #2e3c38;
+  --ink: #e8efec; --muted: #9db0aa; --soft-ink: #c6d3cf; --line: #26322e; --field-line: #34433e; --dashed: #46574f; --filled-line: #2f8f82;
+  --accent: #5eead4; --on-accent: #042f2a; --accent-soft: #123b35; --accent-soft-ink: #a7f3e4; --neutral-bg: #23302c; --shadow: none;
+}
+[data-look='cards'] .icon-btn { border-radius: 14px; border: 1px solid var(--line); box-shadow: none; }
+[data-look='cards'] .search { border: 1px solid var(--line); box-shadow: none; }
+/* The stack: each card overlaps the one before, leaving its top strip (name + logo) visible; the last shows whole. */
+[data-look='cards'] .tiles { grid-template-columns: minmax(0, 1fr); gap: 0; }
+[data-look='cards'] .tile {
+  height: 196px; border-radius: 20px; padding: 16px 18px; box-shadow: 0 -2px 10px rgba(15, 26, 23, 0.14);
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto 1fr auto; align-items: start;
+}
+[data-look='cards'] .tile + .tile { margin-top: -144px; }
+[data-look='cards'] .tile .name { grid-area: 1 / 1; font-size: 18px; font-weight: 800; padding-top: 4px; }
+[data-look='cards'] .tile .mark { grid-area: 1 / 2; width: 34px; height: 34px; border-radius: 10px; background: rgba(255, 255, 255, 0.94); color: var(--store); font-size: 16px; }
+[data-look='cards'] .tile-foot { grid-area: 3 / 1 / 4 / 3; display: flex; justify-content: space-between; align-items: end; font-size: 13px; font-weight: 700; }
+[data-look='cards'] .tile-foot span:first-child { font-size: 15px; letter-spacing: 2px; }
+[data-look='cards'] .fab { border-radius: 18px; box-shadow: 0 8px 20px rgba(15, 118, 110, 0.35); }
+[data-look='cards'] .tab.on svg { box-sizing: content-box; padding: 3px 16px; border-radius: 15px; background: var(--accent-soft); }
+[data-look='cards'] .tab.on { font-weight: 800; }
+/* Detail: normal background; the store header becomes the card itself. */
+[data-look='cards'] .detail { background: var(--bg) !important; color: var(--ink); }
+[data-look='cards'] .detail .glass { color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 14px; }
+[data-look='cards'] .store {
+  margin: 4px 20px 0; height: 200px; padding: 18px 20px; border-radius: 22px; background: var(--store); color: #fff;
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto 1fr; align-items: start; box-shadow: 0 10px 24px rgba(15, 26, 23, 0.22);
+}
+[data-look='cards'] .store .mark { grid-area: 1 / 2; width: 44px; height: 44px; border-radius: 12px; background: rgba(255, 255, 255, 0.94); color: var(--store); font-size: 20px; }
+[data-look='cards'] .store > div { grid-area: 1 / 1 / 3 / 2; display: flex; flex-direction: column; justify-content: space-between; height: 100%; min-width: 0; }
+[data-look='cards'] .sheet { background: transparent; border-radius: 0; padding-top: 18px; }
+[data-look='cards'] .code-card { border-radius: 22px; box-shadow: 0 1px 3px rgba(15, 26, 23, 0.08); }
+[data-look='cards'] .action { border: 1px solid var(--line); }
