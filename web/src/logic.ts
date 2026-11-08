@@ -1,14 +1,17 @@
-export const FORMATS = ['qr', 'ean13', 'ean8', 'upc_a', 'code128', 'code39', 'pdf417', 'aztec', 'datamatrix'] as const;
+export const FORMATS = ['qr', 'ean13', 'ean8', 'upc_a', 'upc_e', 'code128', 'code39', 'code93', 'itf', 'codabar', 'pdf417', 'aztec', 'datamatrix'] as const;
 export type Format = (typeof FORMATS)[number];
 
 export const BCID: Record<Format, string> = {
   qr: 'qrcode', ean13: 'ean13', ean8: 'ean8', upc_a: 'upca', code128: 'code128',
   code39: 'code39', pdf417: 'pdf417', aztec: 'azteccode', datamatrix: 'datamatrix',
+  upc_e: 'upce', code93: 'code93', itf: 'interleaved2of5', codabar: 'rationalizedCodabar',
 };
 
 // bwip-js options used to draw a code; shared by CodeView and the barcode round-trip tests.
 export const renderOptions = (code: string, format: Format) => ({
-  bcid: BCID[format], text: code, scale: 4, paddingwidth: 10, paddingheight: 10, backgroundcolor: 'FFFFFF',
+  bcid: BCID[format],
+  text: format === 'codabar' && !/^[A-D]/i.test(code) ? `A${code}A` : code, // Codabar needs start/stop letters
+  includecheck: format === 'code93', scale: 4, paddingwidth: 10, paddingheight: 10, backgroundcolor: 'FFFFFF',
 });
 
 export const KINDS = ['card', 'ticket', 'coupon', 'receipt'] as const;
@@ -54,9 +57,10 @@ export const dayEnd = (s: string) => { const [y, m, d] = ymd(s); return new Date
 export const FORMAT_LABEL: Record<Format, string> = {
   qr: 'QR', ean13: 'EAN-13', ean8: 'EAN-8', upc_a: 'UPC-A', code128: 'Code 128',
   code39: 'Code 39', pdf417: 'PDF417', aztec: 'Aztec', datamatrix: 'Data Matrix',
+  upc_e: 'UPC-E', code93: 'Code 93', itf: 'ITF', codabar: 'Codabar',
 };
 // 1D barcodes: in till mode they turn sideways so the bars use the long side of the screen.
-export const LINEAR = new Set<Format>(['ean13', 'ean8', 'upc_a', 'code128', 'code39']);
+export const LINEAR = new Set<Format>(['ean13', 'ean8', 'upc_a', 'upc_e', 'code128', 'code39', 'code93', 'itf', 'codabar']);
 
 // Stable hue per store name: the colour of its tile, detail screen and fallback logo.
 export const storeHue = (name: string) => [...name.trim().toLowerCase()].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7);
@@ -120,15 +124,25 @@ function checkDigitOk(code: string) {
   return (10 - (sum % 10)) % 10 === check;
 }
 
-const DIGITS: Partial<Record<Format, number>> = { ean13: 13, ean8: 8, upc_a: 12 };
+const DIGITS: Partial<Record<Format, number>> = { ean13: 13, ean8: 8, upc_a: 12, upc_e: 8 };
+
+// UPC-E is a zero-suppressed UPC-A; its check digit is the one of the expanded 12 digits.
+const upcEtoA = (e: string) => {
+  const [ns, a, b, c, d, f, x, chk] = e;
+  const mid = x <= '2' ? a + b + x + '0000' + c + d + f : x === '3' ? a + b + c + '00000' + d + f : x === '4' ? a + b + c + d + '00000' + f : a + b + c + d + f + '0000' + x;
+  return ns + mid + chk;
+};
 
 export function validateCode(format: Format, code: string, kind?: Kind): string | null {
   if (!code) return kind === 'receipt' ? null : 'Code is empty';
   const n = DIGITS[format];
   if (n) {
     if (!new RegExp(`^\\d{${n}}$`).test(code)) return `${FORMAT_LABEL[format]} needs exactly ${n} digits`;
-    if (!checkDigitOk(code)) return 'Check digit is wrong';
+    if (format === 'upc_e' && !/^[01]/.test(code)) return 'UPC-E starts with 0 or 1';
+    if (!checkDigitOk(format === 'upc_e' ? upcEtoA(code) : code)) return 'Check digit is wrong';
   }
+  if (format === 'itf' && !/^(\d\d)+$/.test(code)) return 'ITF needs an even number of digits';
+  if (format === 'codabar' && !/^([A-D][0-9\-$:/.+]+[A-D]|[0-9\-$:/.+]+)$/i.test(code)) return 'Codabar takes digits and - $ : / . +';
   return null;
 }
 
@@ -185,10 +199,16 @@ export const dedupe = (existing: Item[], incoming: NewItem[]) =>
 export const DETECTOR_FORMAT: Record<Format, string> = {
   qr: 'qr_code', ean13: 'ean_13', ean8: 'ean_8', upc_a: 'upc_a', code128: 'code_128',
   code39: 'code_39', pdf417: 'pdf417', aztec: 'aztec', datamatrix: 'data_matrix',
+  upc_e: 'upc_e', code93: 'code_93', itf: 'itf', codabar: 'codabar',
 };
 
 export const fromDetector = (f: string): Format | null =>
   FORMATS.find((k) => DETECTOR_FORMAT[k] === f) ?? null;
+
+// zxing reports UPC-E as the expanded UPC-A digits (with a leading 0). ponytail: kept as UPC-A,
+// which every till that reads UPC-E also reads; compress back to 8 digits if the label matters.
+export const tidyResult = (code: string, format: Format): { code: string; format: Format } =>
+  format === 'upc_e' && code.length > 8 ? { code: code.slice(-12), format: 'upc_a' } : { code, format };
 
 // Second try for gallery photos that are dim or washed out: each colour channel becomes 2v - 50
 // (the clamped array caps it at 0..255), alpha untouched. In place.

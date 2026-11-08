@@ -7,7 +7,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import bwipjs from 'bwip-js';
 import { prepareZXingModule, readBarcodes } from 'zxing-wasm/reader';
-import { DETECTOR_FORMAT, fromDetector, renderOptions, type Format } from './logic';
+import { DETECTOR_FORMAT, fromDetector, renderOptions, tidyResult, type Format } from './logic';
 
 const require = createRequire(import.meta.url);
 prepareZXingModule({ overrides: { wasmBinary: readFileSync(require.resolve('zxing-wasm/reader/zxing_reader.wasm')) } });
@@ -16,6 +16,7 @@ prepareZXingModule({ overrides: { wasmBinary: readFileSync(require.resolve('zxin
 const ZXING: Record<string, Format> = {
   QRCode: 'qr', EAN13: 'ean13', EAN8: 'ean8', UPCA: 'upc_a', Code128: 'code128',
   Code39: 'code39', PDF417: 'pdf417', Aztec: 'aztec', DataMatrix: 'datamatrix',
+  UPCE: 'upc_e', Code93: 'code93', ITF: 'itf', Codabar: 'codabar',
 };
 
 async function decode(image: Uint8Array) {
@@ -25,16 +26,21 @@ async function decode(image: Uint8Array) {
   const format = ZXING[r.format] ?? r.format;
   // UPC-A is EAN-13 with a leading 0 (identical bars); zxing reports it as EAN-13 when both are allowed.
   if (format === 'ean13' && r.text.length === 13 && r.text.startsWith('0')) return { code: r.text.slice(1), format: 'upc_a' };
-  return { code: r.text, format };
+  return tidyResult(r.text, format);
 }
 
-const CASES: [Format, string][] = [
+const CASES: [Format, string, { code: string; format: Format }?][] = [
   ['ean13', '4006381333931'],
   ['ean8', '96385074'],
   ['upc_a', '036000291452'],
   ['code128', 'CLUB-0042-xyz'],
   ['code128', '9780201379624'],
   ['code39', 'ABC-123 $/+%'],
+  ['upc_e', '01234565', { code: '012345000065', format: 'upc_a' }],
+  ['code93', 'CARD-93 $/+%'],
+  ['itf', '15400141288763'],
+  ['codabar', 'A40156B'],
+  ['codabar', '40156', { code: 'A40156A', format: 'codabar' }],
   ['qr', '1234567890123'],
   ['qr', 'https://example.com/loyalty?id=8812&x=1'],
   ['qr', 'Žluťoučký kůň úpěl ďábelské ódy'],
@@ -46,10 +52,10 @@ const CASES: [Format, string][] = [
   ['datamatrix', 'Plzeň č. 7'],
 ];
 
-for (const [format, code] of CASES) {
+for (const [format, code, want = { code, format }] of CASES) {
   test(`round-trip ${format}: ${code.slice(0, 40)}`, async () => {
     const png = await bwipjs.toBuffer(renderOptions(code, format));
-    assert.deepEqual(await decode(png), { code, format });
+    assert.deepEqual(await decode(png), want);
   });
 }
 

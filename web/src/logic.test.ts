@@ -79,6 +79,14 @@ test('validateCode checks digits and check digit', () => {
   assert.equal(validateCode('upc_a', '036000291452'), null);
   assert.equal(validateCode('qr', 'anything'), null);
   assert.match(validateCode('qr', '')!, /empty/);
+  assert.equal(validateCode('upc_e', '01234565'), null);
+  assert.match(validateCode('upc_e', '01234566')!, /Check digit/);
+  assert.match(validateCode('upc_e', '21234565')!, /0 or 1/);
+  assert.equal(validateCode('itf', '15400141288763'), null);
+  assert.match(validateCode('itf', '123')!, /even/);
+  assert.equal(validateCode('codabar', 'A40156B'), null);
+  assert.equal(validateCode('codabar', '40156'), null);
+  assert.match(validateCode('codabar', 'X12')!, /Codabar/);
 });
 
 test('reminderTime is lead before expiry, or null if already past', () => {
@@ -112,7 +120,8 @@ test('detector format names map to ours', () => {
   assert.equal(fromDetector('ean_13'), 'ean13');
   assert.equal(fromDetector('qr_code'), 'qr');
   assert.equal(fromDetector('data_matrix'), 'datamatrix');
-  assert.equal(fromDetector('itf'), null);
+  assert.equal(fromDetector('itf'), 'itf');
+  assert.equal(fromDetector('unknown'), null);
 });
 
 test('guessFormat picks a barcode type from a typed code', () => {

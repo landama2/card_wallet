@@ -1,5 +1,5 @@
 import type {} from 'barcode-detector/polyfill'; // global BarcodeDetector types only
-import { boostContrast, DETECTOR_FORMAT, FORMATS, fromDetector, type Format } from './logic';
+import { boostContrast, DETECTOR_FORMAT, FORMATS, fromDetector, tidyResult, type Format } from './logic';
 
 type Result = { code: string; format: Format };
 
@@ -20,7 +20,7 @@ const getDetector = () => (detector ??= make().catch((e) => { detector = undefin
 export async function detect(source: ImageBitmapSource | HTMLVideoElement): Promise<Result | null> {
   for (const r of await (await getDetector()).detect(source as ImageBitmapSource)) {
     const format = fromDetector(r.format);
-    if (format) return { code: r.rawValue, format };
+    if (format) return tidyResult(r.rawValue, format);
   }
   return null;
 }
