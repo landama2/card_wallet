@@ -20,10 +20,13 @@ export const deleteItem = (id: number) => save(listItems().filter((i) => i.id !=
 export const updateItem = (id: number, patch: Partial<NewItem>) =>
   save(listItems().map((i) => (i.id === id ? { ...i, ...patch } : i)));
 
-export function insertMany(ns: NewItem[], replace: boolean) {
+// Returns the new ids, in the order of `ns`.
+export function insertMany(ns: NewItem[], replace: boolean): number[] {
   const items = replace ? [] : listItems();
   let id = Math.max(0, ...items.map((i) => i.id));
-  save([...ns.map((n) => ({ ...n, id: ++id })), ...items]);
+  const added = ns.map((n) => ({ ...n, id: ++id }));
+  save([...added, ...items]);
+  return added.map((i) => i.id);
 }
 
 // Put a deleted item back with its old id, or a fresh one if a new item took it meanwhile (Undo after Delete).

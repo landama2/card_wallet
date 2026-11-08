@@ -1,16 +1,28 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import CodeView from '../CodeView';
-import { askText, notify, toast } from '../Dialog';
+import { ask, askText, notify, toast } from '../Dialog';
 import Icon from '../Icon';
 import Logo, { tileColor } from '../Logo';
 import { deleteItem, getItem, restoreItem, updateItem } from '../db';
-import { FORMAT_LABEL, LINEAR, statusChip, toDomain, validityLabel } from '../logic';
+import { FORMAT_LABEL, LINEAR, receiptFacts, statusChip, toDomain, validityLabel } from '../logic';
+import { deletePhoto, getPhoto, putPhoto, shrinkPhoto } from '../photos';
 import { closeOverlay, go, openOverlay } from '../route';
 
-const KIND_LABEL = { card: 'Loyalty card', ticket: 'Ticket', coupon: 'Coupon' } as const;
+const KIND_LABEL = { card: 'Loyalty card', ticket: 'Ticket', coupon: 'Coupon', receipt: 'Receipt' } as const;
 
-export default function Detail({ id, till }: { id: number; till: boolean }) {
+export default function Detail({ id, till, photoOpen }: { id: number; till: boolean; photoOpen: boolean }) {
   const [rev, setRev] = useState(0); // bumped after an edit so the item is re-read from storage
+  const [photo, setPhoto] = useState<string | null>(null); // object URL of the stored photo
+  const [showPhoto, setShowPhoto] = useState(false); // the "Original photo" row is collapsed until tapped
+  const [zoomed, setZoomed] = useState(false);
+  const removing = useRef(false); // Delete awaits the photo read; a second tap must not run it again
+  useEffect(() => {
+    let url: string | undefined;
+    let gone = false;
+    getPhoto(id).then((b) => { if (!gone && b) setPhoto(url = URL.createObjectURL(b)); else if (!gone) setPhoto(null); })
+      .catch(() => { if (!gone) setPhoto(null); }); // unreadable = treated as none; "Add photo" replaces it
+    return () => { gone = true; if (url) URL.revokeObjectURL(url); };
+  }, [id, rev]);
   const item = getItem(id);
   const color = item ? tileColor(item.name) : null;
 
@@ -39,11 +51,12 @@ export default function Detail({ id, till }: { id: number; till: boolean }) {
 
   // Esc closes till mode on desktop; on the phone it's Back or a tap.
   useEffect(() => {
-    if (!till) return;
+    if (!till && !photoOpen) return;
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') closeOverlay(); };
     addEventListener('keydown', onKey);
     return () => removeEventListener('keydown', onKey);
-  }, [till]);
+  }, [till, photoOpen]);
+  useEffect(() => { if (!photoOpen) setZoomed(false); }, [photoOpen]);
 
   // ponytail: StrictMode runs this initializer twice in dev, so the tip disappears after 2 dev views; fine in prod.
   const [showTip] = useState(() => {
@@ -62,11 +75,31 @@ export default function Detail({ id, till }: { id: number; till: boolean }) {
   }
 
   const back = () => go(`/${item.kind}s`);
-  const remove = () => {
+  const remove = async () => {
+    if (removing.current) return;
+    removing.current = true;
+    const blob = await getPhoto(item.id).catch(() => undefined); // held in memory for Undo
     deleteItem(item.id);
+    deletePhoto(item.id).catch(() => {});
     back();
-    toast(`Deleted ${item.name}`, 'Undo', () => go(`/item/${restoreItem(item)}`));
+    toast(`Deleted ${item.name}`, 'Undo', () => {
+      const newId = restoreItem(item);
+      if (blob) putPhoto(newId, blob).catch(() => {});
+      go(`/item/${newId}`);
+    });
   };
+  const pickPhoto = async (f: File | undefined) => {
+    if (!f) return;
+    try { await putPhoto(item.id, await shrinkPhoto(f)); setShowPhoto(true); setRev((r) => r + 1); }
+    catch { notify("The photo couldn't be saved."); }
+  };
+  const removePhoto = async () => {
+    if (!(await ask('Remove the photo? The item stays.', 'Remove', true))) return;
+    await deletePhoto(item.id).catch(() => {});
+    setRev((r) => r + 1);
+  };
+  const photoInput = <input type="file" accept="image/*" className="sr-only" onChange={(e) => { pickPhoto(e.target.files?.[0]); e.target.value = ''; }} />;
+  const noCode = item.kind === 'receipt' && !item.code;
   const setLogo = async () => {
     const input = await askText('Store website for the logo (e.g. tesco.cz). Leave empty to remove.', item.domain ?? '');
     if (input === null) return;
@@ -86,18 +119,46 @@ export default function Detail({ id, till }: { id: number; till: boolean }) {
         <Logo name={item.name} domain={item.domain ?? null} mark />
         <div>
           <h1>{item.name}</h1>
-          <div className="sub">{[item.note, validityLabel(item)].filter(Boolean).join(' · ') || KIND_LABEL[item.kind]}</div>
+          <div className="sub">{[item.note, receiptFacts(item), validityLabel(item)].filter(Boolean).join(' · ') || KIND_LABEL[item.kind]}</div>
         </div>
       </div>
       <div className="sheet">
         {chip && <span className={`chip status ${chip.tone}`}>{chip.text}</span>}
-        <div className="code-card" role="button" tabIndex={0} aria-label="Show code full screen"
-          onClick={() => openOverlay('till')} onKeyDown={(e) => { if (e.target !== e.currentTarget || (e.key !== 'Enter' && e.key !== ' ')) return; e.preventDefault(); openOverlay('till'); }}>
-          <CodeView code={item.code} format={item.format} editHref={`#/edit/${item.id}`} />
-          <p className="codetext">{item.code}</p>
-          <span className="format-label">{FORMAT_LABEL[item.format]} · tap for full screen</span>
-        </div>
-        {showTip && <p className="tip"><Icon name="sun" /> Turn the screen brightness up if the till can't read it. The screen stays on while this is open.</p>}
+        {noCode ? (
+          photo && (
+            <button className="photo-card" aria-label="Show photo full screen" onClick={() => openOverlay('photo')}>
+              <img src={photo} alt="" />
+            </button>
+          )
+        ) : (
+          <>
+            <div className="code-card" role="button" tabIndex={0} aria-label="Show code full screen"
+              onClick={() => openOverlay('till')} onKeyDown={(e) => { if (e.target !== e.currentTarget || (e.key !== 'Enter' && e.key !== ' ')) return; e.preventDefault(); openOverlay('till'); }}>
+              <CodeView code={item.code} format={item.format} editHref={`#/edit/${item.id}`} />
+              <p className="codetext">{item.code}</p>
+              <span className="format-label">{FORMAT_LABEL[item.format]} · tap for full screen</span>
+            </div>
+            {showTip && <p className="tip"><Icon name="sun" /> Turn the screen brightness up if the till can't read it. The screen stays on while this is open.</p>}
+          </>
+        )}
+        {photo ? (
+          <div className="photo-row">
+            <button className="link-btn" aria-expanded={showPhoto || noCode} onClick={() => setShowPhoto(!showPhoto)}>
+              Original photo <Icon name="chevron" size={18} />
+            </button>
+            {(showPhoto || noCode) && (
+              <div className="photo-body">
+                {!noCode && <button className="photo-thumb" aria-label="Show photo full screen" onClick={() => openOverlay('photo')}><img src={photo} alt="" /></button>}
+                <div className="row">
+                  <label className="secondary">Replace{photoInput}</label>
+                  <button className="secondary danger-text" onClick={removePhoto}>Remove</button>
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          <label className="link-btn photo-add"><Icon name="image" size={18} />Add photo{photoInput}</label>
+        )}
         <div className="actions">
           <button className="action" onClick={() => go(`/edit/${item.id}`)}><Icon name="edit" size={20} />Edit</button>
           <button className="action" onClick={setLogo}><Icon name="image" size={20} />Logo</button>
@@ -110,6 +171,11 @@ export default function Detail({ id, till }: { id: number; till: boolean }) {
             <CodeView code={item.code} format={item.format} />
             <p className="codetext">{item.code}</p>
           </div>
+        </div>
+      )}
+      {photoOpen && photo && (
+        <div className={'photo-view' + (zoomed ? ' zoomed' : '')} role="dialog" aria-modal="true" aria-label={`${item.name} photo`} onClick={closeOverlay}>
+          <img src={photo} alt={`Photo of ${item.name}`} onClick={(e) => { e.stopPropagation(); setZoomed(!zoomed); }} />
         </div>
       )}
     </div>

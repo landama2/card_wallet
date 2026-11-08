@@ -105,7 +105,7 @@ h1, h2 { font-family: var(--display); margin: 0; }
 
 .fab { position: fixed; right: 20px; bottom: calc(var(--tabbar) + 20px); width: 60px; height: 60px; border-radius: 30px; border: none; background: var(--accent); color: var(--on-accent); display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 20px rgba(31, 79, 209, 0.35); }
 
-.tabbar { position: fixed; left: 0; right: 0; bottom: 0; height: var(--tabbar); padding: 8px 12px calc(20px + env(safe-area-inset-bottom, 0px)); background: var(--surface); border-top: 1px solid var(--line); display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; }
+.tabbar { position: fixed; left: 0; right: 0; bottom: 0; height: var(--tabbar); padding: 8px 12px calc(20px + env(safe-area-inset-bottom, 0px)); background: var(--surface); border-top: 1px solid var(--line); display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; }
 .tab { border: none; background: transparent; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; color: var(--muted); font-size: 12px; font-weight: 500; }
 .tab.on { color: var(--accent); font-weight: 600; }
 
@@ -145,7 +145,7 @@ h1, h2 { font-family: var(--display); margin: 0; }
 
 /* Forms */
 .form { flex: 1; padding: 8px 20px calc(96px + env(safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; gap: 14px; }
-.segmented { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; padding: 4px; border-radius: 14px; background: var(--seg-bg); }
+.segmented { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 4px; padding: 4px; border-radius: 14px; background: var(--seg-bg); }
 .segmented button { height: 44px; border: none; border-radius: 10px; background: transparent; color: var(--soft-ink); font-size: 14px; font-weight: 500; }
 .segmented button[aria-pressed='true'] { background: var(--seg-on); color: var(--ink); font-weight: 600; box-shadow: 0 1px 3px rgba(20, 22, 26, 0.12); }
 .banner { margin: 0; padding: 12px 14px; border-radius: 16px; background: var(--accent-soft); color: var(--accent-soft-ink); font-size: 14px; line-height: 1.35; }
@@ -231,3 +231,26 @@ h1, h2 { font-family: var(--display); margin: 0; }
 .ocr-debug th, .ocr-debug td { text-align: left; padding: 3px 4px; border-bottom: 1px solid var(--line, #8884); overflow-wrap: anywhere; vertical-align: top; }
 .ocr-debug th:first-child, .ocr-debug td:first-child { width: 4.5em; overflow-wrap: normal; }
 .ocr-debug pre { margin: 0; font-size: 12px; white-space: pre-wrap; }
+.check { display: flex; align-items: center; gap: 10px; min-height: 44px; font-size: 14px; color: var(--soft-ink); }
+.check input { width: 20px; height: 20px; accent-color: var(--accent); }
+.more { display: flex; flex-direction: column; gap: 12px; }
+.more summary { min-height: 44px; display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; color: var(--soft-ink); cursor: pointer; list-style: none; }
+.more summary::-webkit-details-marker { display: none; }
+.more summary::before { content: '▸'; transition: transform 0.15s; }
+.more[open] summary::before { transform: rotate(90deg); }
+.more[open] > :not(summary) { margin-top: 12px; }
+.more > .secondary { width: 100%; }
+
+.photo-row { display: flex; flex-direction: column; gap: 10px; }
+.photo-row .link-btn, .photo-add { align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; min-height: 44px; }
+.photo-row .link-btn[aria-expanded="true"] svg { transform: rotate(180deg); }
+.photo-body { display: flex; flex-direction: column; gap: 10px; }
+.photo-body .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.photo-thumb, .photo-card { border: none; padding: 0; border-radius: 16px; overflow: hidden; background: var(--surface); box-shadow: var(--shadow); }
+.photo-thumb img { display: block; width: 100%; max-height: 180px; object-fit: cover; }
+.photo-card img { display: block; width: 100%; max-height: 50dvh; object-fit: contain; background: #fff; }
+.photo-view { position: fixed; inset: 0; z-index: 50; background: #000; display: flex; align-items: center; justify-content: center; overflow: auto; }
+.photo-view img { max-width: 100%; max-height: 100%; object-fit: contain; cursor: zoom-in; }
+/* ponytail: tap toggles fit / full resolution with scrolling; real pinch-zoom only if this proves too clumsy */
+.photo-view.zoomed { align-items: flex-start; justify-content: flex-start; }
+.photo-view.zoomed img { max-width: none; max-height: none; cursor: zoom-out; }
