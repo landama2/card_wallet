@@ -99,7 +99,7 @@ export default function Lists({ tab }: { tab: Kind }) {
             {cards.length === 0 && needle && (
               <div className="empty">
                 <p>No card matches “{q.trim()}”.</p>
-                <button className="secondary" onClick={() => go(`/add?kind=card&name=${encodeURIComponent(q.trim())}`)}>Add “{q.trim()}”</button>
+                <button className="secondary" onClick={() => go(`/pick?q=${encodeURIComponent(q.trim())}`)}>Add “{q.trim()}”</button>
               </div>
             )}
           </>
@@ -120,7 +120,7 @@ export default function Lists({ tab }: { tab: Kind }) {
         )}
       </main>
 
-      <button className="fab" aria-label={`Add ${tab}`} onClick={() => go(`/add?kind=${tab}`)}><Icon name="plus" size={26} /></button>
+      <button className="fab" aria-label={`Add ${tab}`} onClick={() => go(tab === 'card' ? '/pick' : `/add?kind=${tab}`)}><Icon name="plus" size={26} /></button>
 
       <nav className="tabbar" aria-label="Sections">
         {KINDS.map((k) => (

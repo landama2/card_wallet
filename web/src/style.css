@@ -355,3 +355,30 @@ h1, h2 { font-family: var(--display); margin: 0; }
 [data-look='cards'] .sheet { background: transparent; border-radius: 0; padding-top: 18px; }
 [data-look='cards'] .code-card { border-radius: 22px; box-shadow: 0 1px 3px rgba(15, 26, 23, 0.08); }
 [data-look='cards'] .action { border: 1px solid var(--line); }
+
+/* Store picker (new card, step 1) and the picked-store header in the Add form. */
+.picker .chips { display: flex; gap: 8px; overflow-x: auto; margin: 0 -20px; padding: 0 20px 2px; scrollbar-width: none; }
+.chips button { flex: none; height: 40px; padding: 0 16px; border-radius: 20px; border: none; background: var(--seg-bg); color: var(--soft-ink); font-size: 14px; font-weight: 700; }
+.chips button[aria-pressed='true'] { background: var(--ink); color: var(--bg); }
+.store-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.store-tile { height: 104px; border: none; border-radius: 18px; padding: 12px; display: flex; flex-direction: column; justify-content: space-between; align-items: flex-start; text-align: left; color: #fff; min-width: 0; }
+.store-tile .name { font-family: var(--display); font-size: 15px; font-weight: 700; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.store-tile .mark { width: 36px; height: 36px; font-size: 17px; }
+.store-tile.custom, .row-card.custom { background: transparent; border: 2px dashed var(--dashed); color: var(--ink); box-shadow: none; }
+.store-tile.custom { align-items: center; justify-content: center; gap: 8px; }
+.plus-mark { width: 38px; height: 38px; border-radius: 19px; background: var(--accent-soft); color: var(--accent-soft-ink); display: inline-flex; align-items: center; justify-content: center; flex: none; }
+.store-swatch { border-radius: 14px; display: inline-flex; flex: none; }
+.store-swatch .mark { width: 44px; height: 44px; }
+.picker .row-card > svg:last-child { transform: rotate(-90deg); color: var(--muted); flex: none; }
+.picked { display: flex; align-items: center; gap: 12px; padding: 14px; border-radius: 18px; color: #fff; }
+.picked .name { flex: 1; min-width: 0; font-family: var(--display); font-size: 20px; font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.picked .change { width: auto; padding: 0 14px; font-size: 14px; font-weight: 700; }
+[data-look='soft'] .store-tile, [data-look='soft'] .picked { border-radius: 22px; }
+[data-look='soft'] .store-tile .name { font-weight: 800; }
+[data-look='cards'] .store-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+[data-look='cards'] .store-tile { height: auto; aspect-ratio: 1.586; border-radius: 14px; flex-direction: row; align-items: flex-start; box-shadow: 0 4px 10px rgba(15, 26, 23, 0.16); }
+[data-look='cards'] .store-tile:not(.custom) .name { order: -1; flex: 1; font-weight: 800; }
+[data-look='cards'] .store-tile.custom { flex-direction: column; box-shadow: none; }
+[data-look='cards'] .store-tile .mark, [data-look='cards'] .picked .mark, [data-look='cards'] .store-swatch .mark { width: 30px; height: 30px; border-radius: 9px; background: rgba(255, 255, 255, 0.94); color: var(--store); font-size: 14px; }
+[data-look='cards'] .store-swatch .mark { width: 44px; height: 44px; font-size: 19px; }
+[data-look='cards'] .picked { border-radius: 16px; }

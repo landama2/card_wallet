@@ -13,7 +13,7 @@ import { putPhoto, shrinkPhoto } from '../photos';
 import { isPkpass, parsePkpass } from '../pkpass';
 import { guessReceipt } from '../receipt-parse';
 import { closeOverlay, go, openOverlay } from '../route';
-import { STORE_NAMES, findStore } from '../stores';
+import { findStore } from '../stores';
 
 const KIND_LABEL: Record<Kind, string> = { card: 'Card', ticket: 'Ticket', coupon: 'Coupon', receipt: 'Receipt' };
 type Field = 'name' | 'website' | 'code' | 'from' | 'until' | 'purchased' | 'amount';
@@ -28,7 +28,7 @@ const toDateTimeInput = (t: number) => {
 };
 
 // Add a new item, or edit one when `editId` is given (same form, prefilled).
-export default function Add({ kind: initialKind, shared, editId, scanning, initialName = '' }: { kind: Kind; shared: boolean; editId?: number; scanning: boolean; initialName?: string }) {
+export default function Add({ kind: initialKind, shared, editId, scanning, initialName = '', picked = false }: { kind: Kind; shared: boolean; editId?: number; scanning: boolean; initialName?: string; picked?: boolean }) {
   const editing = editId != null ? getItem(editId) : null;
   const [kind, setKind] = useState<Kind>(editing?.kind ?? initialKind);
   const [name, setName] = useState(editing?.name ?? initialName);
@@ -65,6 +65,7 @@ export default function Add({ kind: initialKind, shared, editId, scanning, initi
     if (s && !(c && validateCode(s.format, c.trim(), kind))) setFormat(s.format);
     else if (c) setFormat(guessFormat(c));
   };
+  const store = picked && kind === 'card' ? findStore(name) : null; // chosen in the store picker: shown as a header, not a field
   const back = () => go(editing ? `/item/${editing.id}` : `/${kind}s`);
 
   const current = useRef({ kind, name, website, from, until, scanning, code, purchased, amount }); // latest values, for the async OCR fill below
@@ -296,28 +297,35 @@ export default function Add({ kind: initialKind, shared, editId, scanning, initi
         {ocrNote && !reading && ocrDebugOn() && <OcrDebug />}
         {isReceipt && <>{fromImage(photo ? 'Choose another photo' : 'Take or choose photo')}{keepSwitch}</>}
 
-        <label className="field">
-          <span className="field-label">{isReceipt ? 'Shop or provider' : 'Store name'} {badge('name')}</span>
-          <span className="with-logo">
-            <Logo name={name || '?'} domain={toDomain(website)} size={52} />
-            <input {...errProps('name')} className={cls('name')} value={name} onChange={(e) => typed('name', setName)(e.target.value)} placeholder="e.g. Albert" list="store-names" autoComplete="off" />
-            <datalist id="store-names">{STORE_NAMES.map((n) => <option key={n} value={n} />)}</datalist>
-          </span>
-          {errText('name')}
-        </label>
-
-        {siteOpen ? (
+        {store ? (
+          <div className="picked" style={{ background: store.color, '--store': store.color } as React.CSSProperties}>
+            <Logo name={store.name} domain={store.domain ?? null} mark />
+            <span className="name">{store.name}</span>
+            <button className="glass change" onClick={() => go('/pick')}>Change store</button>
+          </div>
+        ) : (<>
           <label className="field">
-            <span className="field-label">Store website, for the logo {badge('website')}</span>
-            <input {...errProps('website')} className={cls('website')} value={website} onChange={(e) => typed('website', setWebsite)(e.target.value)} placeholder="e.g. albert.cz (optional)" inputMode="url" autoCapitalize="none" autoFocus={siteOpen} />
-            {errText('website')}
-            <button className="link-btn" style={{ alignSelf: 'flex-start' }} aria-expanded onClick={(e) => { e.preventDefault(); setSiteOpen(false); }}>Done</button>
+            <span className="field-label">{isReceipt ? 'Shop or provider' : 'Store name'} {badge('name')}</span>
+            <span className="with-logo">
+              <Logo name={name || '?'} domain={toDomain(website)} size={52} />
+              <input {...errProps('name')} className={cls('name')} value={name} onChange={(e) => typed('name', setName)(e.target.value)} placeholder="e.g. Albert" />
+            </span>
+            {errText('name')}
           </label>
-        ) : (
-          <button className="link-btn" style={{ alignSelf: 'flex-start' }} aria-expanded={false} onClick={() => setSiteOpen(true)}>
-            {website ? `Logo from ${website} · change` : 'Add a website for the logo'}
-          </button>
-        )}
+
+          {siteOpen ? (
+            <label className="field">
+              <span className="field-label">Store website, for the logo {badge('website')}</span>
+              <input {...errProps('website')} className={cls('website')} value={website} onChange={(e) => typed('website', setWebsite)(e.target.value)} placeholder="e.g. albert.cz (optional)" inputMode="url" autoCapitalize="none" autoFocus={siteOpen} />
+              {errText('website')}
+              <button className="link-btn" style={{ alignSelf: 'flex-start' }} aria-expanded onClick={(e) => { e.preventDefault(); setSiteOpen(false); }}>Done</button>
+            </label>
+          ) : (
+            <button className="link-btn" style={{ alignSelf: 'flex-start' }} aria-expanded={false} onClick={() => setSiteOpen(true)}>
+              {website ? `Logo from ${website} · change` : 'Add a website for the logo'}
+            </button>
+          )}
+        </>)}
 
         {!isReceipt && (
           <>
