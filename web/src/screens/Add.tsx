@@ -48,6 +48,7 @@ export default function Add({ kind: initialKind, shared, editId, scanning, initi
   const [errors, setErrors] = useState<Record<string, string>>({}); // field -> message, shown under the field
   const [ocrNote, setOcrNote] = useState('');
   const [reading, setReading] = useState(false);
+  const [typesOpen, setTypesOpen] = useState(false); // the code type is guessed; its buttons show when asked for (or the code has an error)
   const [siteOpen, setSiteOpen] = useState(false); // the website field stays hidden until asked for (or it has an error)
   const [barcodeOpen, setBarcodeOpen] = useState(!!editing?.code); // receipts: the Barcode section (collapsed when empty)
   const saving = useRef(false);
@@ -191,8 +192,10 @@ export default function Add({ kind: initialKind, shared, editId, scanning, initi
     else if (kind === 'coupon' && from && from > until) e.until = 'Must not be before "Valid from"';
     if (kind === 'receipt' && deadline && purchased && deadline < purchased) e.deadline = 'Must not be before the purchase date';
     setErrors(e);
+    if (e.code && code.trim()) setTypesOpen(true); // a wrong code is usually the wrong type
+    if (e.website) setSiteOpen(true);
     const first = Object.keys(e)[0];
-    if (first) { document.getElementById(`f-${first}`)?.focus(); return; }
+    if (first) { requestAnimationFrame(() => document.getElementById(`f-${first}`)?.focus()); return; } // after a hidden field opens
     const expiresAt = kind === 'ticket' ? new Date(expires).getTime()
       : kind === 'coupon' ? dayEnd(until)
       : isReceipt && deadline ? dayEnd(deadline) : null;
@@ -256,11 +259,18 @@ export default function Add({ kind: initialKind, shared, editId, scanning, initi
         <input ref={codeInput} {...errProps('code')} className={cls('code')} value={code} onChange={(e) => { typed('code', setCode)(e.target.value); autoFormat(name, e.target.value); }} placeholder={isReceipt ? 'Optional' : 'Scan, import or type the number'} autoCapitalize="none" />
         {errText('code')}
       </label>
-      <div className="pills" role="group" aria-label="Code type">
-        {FORMATS.map((f) => (
-          <button key={f} aria-pressed={f === format} onClick={() => { formatTouched.current = true; setFormat(f); setErrors(({ code: _gone, ...rest }) => rest); }}>{FORMAT_LABEL[f]}</button>
-        ))}
-      </div>
+      {typesOpen ? (
+        <div className="pills" role="group" aria-label="Code type">
+          {FORMATS.map((f) => (
+            <button key={f} aria-pressed={f === format} onClick={() => { formatTouched.current = true; setFormat(f); setTypesOpen(true); setErrors(({ code: _gone, ...rest }) => rest); }}>{FORMAT_LABEL[f]}</button>
+          ))}
+          <button className="link-btn" aria-expanded onClick={() => setTypesOpen(false)}>Done</button>
+        </div>
+      ) : (
+        <button className="link-btn" style={{ alignSelf: 'flex-start' }} aria-expanded={false} onClick={() => setTypesOpen(true)}>
+          {FORMAT_LABEL[format]} · change type
+        </button>
+      )}
     </>
   );
 
@@ -296,11 +306,12 @@ export default function Add({ kind: initialKind, shared, editId, scanning, initi
           {errText('name')}
         </label>
 
-        {siteOpen || errors.website ? (
+        {siteOpen ? (
           <label className="field">
             <span className="field-label">Store website, for the logo {badge('website')}</span>
             <input {...errProps('website')} className={cls('website')} value={website} onChange={(e) => typed('website', setWebsite)(e.target.value)} placeholder="e.g. albert.cz (optional)" inputMode="url" autoCapitalize="none" autoFocus={siteOpen} />
             {errText('website')}
+            <button className="link-btn" style={{ alignSelf: 'flex-start' }} aria-expanded onClick={(e) => { e.preventDefault(); setSiteOpen(false); }}>Done</button>
           </label>
         ) : (
           <button className="link-btn" style={{ alignSelf: 'flex-start' }} aria-expanded={false} onClick={() => setSiteOpen(true)}>
