@@ -13,6 +13,7 @@ import { putPhoto, shrinkPhoto } from '../photos';
 import { isPkpass, parsePkpass } from '../pkpass';
 import { guessReceipt } from '../receipt-parse';
 import { closeOverlay, go, openOverlay } from '../route';
+import { STORE_NAMES, findStore } from '../stores';
 
 const KIND_LABEL: Record<Kind, string> = { card: 'Card', ticket: 'Ticket', coupon: 'Coupon', receipt: 'Receipt' };
 type Field = 'name' | 'website' | 'code' | 'from' | 'until' | 'purchased' | 'amount';
@@ -47,6 +48,7 @@ export default function Add({ kind: initialKind, shared, editId, scanning, initi
   const [errors, setErrors] = useState<Record<string, string>>({}); // field -> message, shown under the field
   const [ocrNote, setOcrNote] = useState('');
   const [reading, setReading] = useState(false);
+  const [siteOpen, setSiteOpen] = useState(false); // the website field stays hidden until asked for (or it has an error)
   const [barcodeOpen, setBarcodeOpen] = useState(!!editing?.code); // receipts: the Barcode section (collapsed when empty)
   const saving = useRef(false);
   const codeInput = useRef<HTMLInputElement>(null);
@@ -55,6 +57,13 @@ export default function Add({ kind: initialKind, shared, editId, scanning, initi
     if (!scanning && typeCode.current) { typeCode.current = false; codeInput.current?.focus(); }
   }, [scanning]);
   const formatTouched = useRef(editing != null); // once the user picks a type (or a scan sets one), stop guessing
+  // Until the user picks a type: a known store's usual type when the code fits it, else a guess from the code.
+  const autoFormat = (n: string, c: string) => {
+    if (formatTouched.current) return;
+    const s = findStore(n);
+    if (s && !(c && validateCode(s.format, c.trim(), kind))) setFormat(s.format);
+    else if (c) setFormat(guessFormat(c));
+  };
   const back = () => go(editing ? `/item/${editing.id}` : `/${kind}s`);
 
   const current = useRef({ kind, name, website, from, until, scanning, code, purchased, amount }); // latest values, for the async OCR fill below
@@ -65,6 +74,17 @@ export default function Add({ kind: initialKind, shared, editId, scanning, initi
     setFilled(({ [field]: _gone, ...rest }) => rest);
     setErrors(({ [field]: _gone, ...rest }) => rest);
   };
+
+  // A known store sets the barcode type and its website (for the logo); a website the user typed or OCR read stays.
+  const FROM_LIST = 'from store list';
+  useEffect(() => {
+    autoFormat(name, code);
+    if (editing || (website && filled.website !== FROM_LIST)) return;
+    const domain = findStore(name)?.domain ?? '';
+    setWebsite(domain);
+    if (domain) mark(['website'], FROM_LIST);
+    else setFilled(({ website: _gone, ...rest }) => rest);
+  }, [name]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const fill = (r: { code: string; format: Format } | null, source: string) => {
     if (!r) {
@@ -233,7 +253,7 @@ export default function Add({ kind: initialKind, shared, editId, scanning, initi
     <>
       <label className="field">
         <span className="field-label">Code {badge('code')}</span>
-        <input ref={codeInput} {...errProps('code')} className={cls('code')} value={code} onChange={(e) => { typed('code', setCode)(e.target.value); if (!formatTouched.current) setFormat(guessFormat(e.target.value)); }} placeholder={isReceipt ? 'Optional' : 'Scan, import or type the number'} autoCapitalize="none" />
+        <input ref={codeInput} {...errProps('code')} className={cls('code')} value={code} onChange={(e) => { typed('code', setCode)(e.target.value); autoFormat(name, e.target.value); }} placeholder={isReceipt ? 'Optional' : 'Scan, import or type the number'} autoCapitalize="none" />
         {errText('code')}
       </label>
       <div className="pills" role="group" aria-label="Code type">
@@ -270,16 +290,23 @@ export default function Add({ kind: initialKind, shared, editId, scanning, initi
           <span className="field-label">{isReceipt ? 'Shop or provider' : 'Store name'} {badge('name')}</span>
           <span className="with-logo">
             <Logo name={name || '?'} domain={toDomain(website)} size={52} />
-            <input {...errProps('name')} className={cls('name')} value={name} onChange={(e) => typed('name', setName)(e.target.value)} placeholder="e.g. Albert" />
+            <input {...errProps('name')} className={cls('name')} value={name} onChange={(e) => typed('name', setName)(e.target.value)} placeholder="e.g. Albert" list="store-names" autoComplete="off" />
+            <datalist id="store-names">{STORE_NAMES.map((n) => <option key={n} value={n} />)}</datalist>
           </span>
           {errText('name')}
         </label>
 
-        <label className="field">
-          <span className="field-label">Store website, for the logo {badge('website')}</span>
-          <input {...errProps('website')} className={cls('website')} value={website} onChange={(e) => typed('website', setWebsite)(e.target.value)} placeholder="e.g. albert.cz (optional)" inputMode="url" autoCapitalize="none" />
-          {errText('website')}
-        </label>
+        {siteOpen || errors.website ? (
+          <label className="field">
+            <span className="field-label">Store website, for the logo {badge('website')}</span>
+            <input {...errProps('website')} className={cls('website')} value={website} onChange={(e) => typed('website', setWebsite)(e.target.value)} placeholder="e.g. albert.cz (optional)" inputMode="url" autoCapitalize="none" autoFocus={siteOpen} />
+            {errText('website')}
+          </label>
+        ) : (
+          <button className="link-btn" style={{ alignSelf: 'flex-start' }} aria-expanded={false} onClick={() => setSiteOpen(true)}>
+            {website ? `Logo from ${website} · change` : 'Add a website for the logo'}
+          </button>
+        )}
 
         {!isReceipt && (
           <>

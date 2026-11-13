@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { initialOf, logoUrl, storeHue } from './logic';
+import { findStore } from './stores';
 
 // Store icon from the domain, or the store's initial when there is no domain / the icon fails to load.
 // `mark`: the translucent square used on store-coloured tiles and the detail header.
@@ -14,5 +15,5 @@ export default function Logo({ name, domain, size = 44, mark = false }: { name: 
   return <span className="logo" style={{ ...style, background: tileColor(name) }} aria-hidden>{initialOf(name)}</span>;
 }
 
-// Dark enough for white text (≥ 4.5:1) at every hue.
-export const tileColor = (name: string) => `hsl(${storeHue(name)} 45% 30%)`;
+// A known store's brand colour; otherwise a stable hue. Both dark enough for white text (≥ 4.5:1).
+export const tileColor = (name: string) => findStore(name)?.color ?? `hsl(${storeHue(name)} 45% 30%)`;
